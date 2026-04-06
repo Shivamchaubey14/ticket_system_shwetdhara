@@ -1,0 +1,9 @@
+come to this folder 
+
+PS C:\Users\Shwetdhara\Desktop\ticket_system_shwetdhara>
+
+run 
+
+pipenv shell (to activate virtual environment). Once the virtual environment is activated then run this -- powershell -ExecutionPolicy Bypass -File Start-KSTS.ps1
+
+A new terminal with three tab will open and everything will run perfectly.

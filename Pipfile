@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dotenv = "*"
+mysqlclient = "*"
+pymysql = "*"
+fastapi = {extras = ["standard"], version = "*"}
+sqlalchemy = {extras = ["asyncio"], version = "*"}
+aiosqlite = "*"
+alembic = "*"
+django = "*"
+openpyxl = "*"
+djangorestframework = "*"
+djangorestframework-simplejwt = "*"
+pillow = "*"
+django-crontab = "*"
+django-celery-results = "*"
+celery = "*"
+django-celery-beat = "*"
+redis = "*"
+python-decouple = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.13"

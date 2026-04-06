@@ -1,0 +1,1315 @@
+{% extends "base.html" %}
+{% block title %}Bulk Data Upload — KSTS{% endblock %}
+{% block content %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<div class="ksts-wrapper">
+
+  <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <aside class="ksts-sidebar">
+    <div class="sidebar-inner">
+
+      <div class="profile-card">
+        <div class="avatar-ring">
+          <div class="avatar-initials">
+            {{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}
+          </div>
+        </div>
+        <div class="profile-meta">
+          <h3 class="profile-name">{{ request.user.get_full_name }}</h3>
+          <span class="profile-role"><i class="fas fa-cloud-upload-alt"></i> Data Import</span>
+        </div>
+        <div class="profile-badges">
+          <span class="pbadge"><i class="fas fa-id-badge"></i> {{ request.user.employee_code|default:"—" }}</span>
+          <span class="pbadge"><i class="fas fa-building"></i> {{ request.user.department|default:"Admin" }}</span>
+        </div>
+      </div>
+
+      <div class="sidebar-stats">
+        <div class="sstat" style="background:rgba(47,107,63,.15)">
+          <span class="sstat-num" id="sbFarmers">{{ db_counts.farmers|default:"—" }}</span>
+          <span class="sstat-lbl">Farmers</span>
+          <i class="fas fa-tractor sstat-icon"></i>
+        </div>
+        <div class="sstat" style="background:rgba(67,86,99,.15)">
+          <span class="sstat-num" id="sbMpps">{{ db_counts.mpps|default:"—" }}</span>
+          <span class="sstat-lbl">MPPs</span>
+          <i class="fas fa-users-cog sstat-icon"></i>
+        </div>
+        <div class="sstat" style="background:rgba(200,90,10,.13)">
+          <span class="sstat-num" id="sbTransporters">{{ db_counts.transporters|default:"—" }}</span>
+          <span class="sstat-lbl">Transporters</span>
+          <i class="fas fa-truck sstat-icon"></i>
+        </div>
+        <div class="sstat" style="background:rgba(23,162,184,.12)">
+          <span class="sstat-num">{{ db_counts.tickets|default:"—" }}</span>
+          <span class="sstat-lbl">Tickets</span>
+          <i class="fas fa-ticket-alt sstat-icon"></i>
+        </div>
+        <div class="sstat" style="background:rgba(108,52,131,.15);grid-column:span 2">
+          <span class="sstat-num">{{ db_counts.employees|default:"—" }}</span>
+          <span class="sstat-lbl">Employees</span>
+          <i class="fas fa-user-tie sstat-icon"></i>
+        </div>
+      </div>
+
+      <p class="sidebar-section-label">Upload Tools</p>
+      <nav class="sidebar-nav">
+        <button class="snav-btn active" data-tab="farmer" onclick="switchTab('farmer')">
+          <span class="snav-icon"><i class="fas fa-tractor" style="color:#72d68a"></i></span>
+          <span class="snav-text">Farmer / Member</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </button>
+        <button class="snav-btn" data-tab="sahayak" onclick="switchTab('sahayak')">
+          <span class="snav-icon"><i class="fas fa-users-cog" style="color:#8ab4d4"></i></span>
+          <span class="snav-text">Sahayak / MPP</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </button>
+        <button class="snav-btn" data-tab="transporter" onclick="switchTab('transporter')">
+          <span class="snav-icon"><i class="fas fa-truck" style="color:#f4a470"></i></span>
+          <span class="snav-text">Transporter</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </button>
+        <button class="snav-btn" data-tab="employee" onclick="switchTab('employee')">
+          <span class="snav-icon"><i class="fas fa-user-tie" style="color:#c39bd3"></i></span>
+          <span class="snav-text">Employee</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </button>
+      </nav>
+
+      <p class="sidebar-section-label">Navigation</p>
+      <nav class="sidebar-nav">
+        <a href="{% url 'home' %}" class="snav-btn">
+          <span class="snav-icon"><i class="fas fa-headset"></i></span>
+          <span class="snav-text">Caller Dashboard</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <a href="{% url 'my_tickets' %}" class="snav-btn">
+          <span class="snav-icon"><i class="fas fa-list-alt"></i></span>
+          <span class="snav-text">My Tickets</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <a href="{% url 'logout' %}" class="snav-btn">
+          <span class="snav-icon"><i class="fas fa-sign-out-alt"></i></span>
+          <span class="snav-text">Logout</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </a>
+      </nav>
+
+      <div class="sidebar-help">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <p class="help-title">Upload Tips</p>
+          <p class="help-sub">Upload MPPs before Farmers. Use Dry Run to validate first.</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════ MAIN ═══════════════════ -->
+  <main class="ksts-main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 class="topbar-title"><i class="fas fa-cloud-upload-alt"></i> Bulk Data Upload</h1>
+        <p class="topbar-sub">Import Farmers · Sahayaks · Transporters · Employees from Excel &middot; Shwetdhara Dairy KSTS</p>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date"><i class="fas fa-calendar-alt"></i><span id="liveDate">—</span></div>
+      </div>
+    </div>
+
+    {% if messages %}
+    <div id="buMsgList">
+      {% for msg in messages %}
+      <div class="bu-msg {% if 'error' in msg.tags %}bu-error{% elif 'warning' in msg.tags %}bu-warning{% else %}bu-success{% endif %}">
+        <i class="fas {% if 'error' in msg.tags %}fa-exclamation-circle{% elif 'warning' in msg.tags %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
+        <span>{{ msg }}</span>
+        <button class="bu-msg-x" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ══════════════════════════════════════════════
+         TAB: FARMER
+    ══════════════════════════════════════════════ -->
+    <div class="bu-panel active" id="tab-farmer">
+
+      <div class="bu-banner" style="background:linear-gradient(130deg,#1e2330,#1e3828)">
+        <div class="bu-bicon" style="background:rgba(47,107,63,.3);color:#72d68a"><i class="fas fa-tractor"></i></div>
+        <div>
+          <h2 class="bu-btitle">Farmer / Member Upload</h2>
+          <p class="bu-bsub">Upload the member master sheet (.xlsx) — create or update farmer records. Unique key: <code class="bu-code">Form Number</code>.</p>
+        </div>
+        <div class="bu-bbadges">
+          <span class="bu-badge bu-badge-g"><i class="fas fa-shield-alt"></i> Row-validated</span>
+          <span class="bu-badge bu-badge-b"><i class="fas fa-redo"></i> Upsert on Form No.</span>
+        </div>
+      </div>
+
+      <div class="bu-cols-card">
+        <div class="bu-cols-head">
+          <i class="fas fa-columns" style="color:#2F6B3F;font-size:.85rem"></i>
+          <span class="bu-cols-title">Required Columns</span>
+          <span class="bu-cols-hint">First row = header &nbsp;·&nbsp; Case-sensitive</span>
+        </div>
+        <div class="bu-cols-body">
+          <div class="bu-cpgrid">
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Form Number</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Unique Member Code</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Member Name</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Gender</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> State Name</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> District Name</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Tehsil Name</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> Village Name</span>
+            <span class="bu-cp bu-cp-f"><i class="fas fa-asterisk"></i> MPP Unique Code</span>
+          </div>
+          <div class="bu-cnote bu-cnote-f">
+            <i class="fas fa-info-circle" style="color:#e6b800;flex-shrink:0;margin-top:1px"></i>
+            <span>Geography (State → District → Tehsil → Village → Hamlet) is <strong>auto-created</strong>. The <code>MPP Unique Code</code> must already exist — upload MPPs first.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card — Farmer -->
+      <div class="bu-progress-card" id="farmerProgressCard" style="display:none">
+        <div class="bu-progress-head bu-progress-head-f">
+          <div class="bu-progress-icon" id="farmerProgressIcon"><i class="fas fa-circle-notch fa-spin"></i></div>
+          <div class="bu-progress-meta">
+            <div class="bu-progress-title" id="farmerProgressTitle">Processing rows…</div>
+            <div class="bu-progress-sub" id="farmerProgressSub">Preparing import</div>
+          </div>
+          <div class="bu-progress-counts">
+            <span class="bpc bpc-cr"><i class="fas fa-plus-circle"></i> <span id="fpc-created">0</span></span>
+            <span class="bpc bpc-up"><i class="fas fa-sync-alt"></i> <span id="fpc-updated">0</span></span>
+            <span class="bpc bpc-er"><i class="fas fa-exclamation-circle"></i> <span id="fpc-errors">0</span></span>
+            <span class="bpc bpc-sk"><i class="fas fa-minus-circle"></i> <span id="fpc-skipped">0</span></span>
+          </div>
+        </div>
+        <div class="bu-pbar-track"><div class="bu-pbar-fill bu-pbar-fill-f" id="farmerPbarFill" style="width:0%"></div></div>
+        <div class="bu-pbar-labels"><span id="farmerPbarDone">0 / 0 rows</span><span id="farmerPbarPct">0%</span></div>
+        <div class="bu-livelog" id="farmerLiveLog"><div class="bu-livelog-empty">Waiting for rows…</div></div>
+        <div class="bu-rollback-warn" id="farmerRollbackWarn" style="display:none">
+          <i class="fas fa-undo-alt"></i>
+          <div><strong>Batch rolled back — nothing was saved.</strong><div id="farmerRollbackReason"></div></div>
+        </div>
+      </div>
+
+      <div class="bu-form-card">
+        <div class="bu-fhead bu-fhead-f"><i class="fas fa-file-excel" style="color:#2F6B3F"></i><span class="bu-ftitle">Select &amp; Upload Excel File</span></div>
+        <div class="bu-fbody">
+          <form class="bu-form" id="form-farmer" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="upload_type" value="farmer">
+            <div class="bu-dz" id="dz-farmer">
+              <input type="file" name="excel_file" id="fi-farmer" accept=".xlsx">
+              <div class="bu-dz-icon"><i class="fas fa-file-excel"></i></div>
+              <p class="bu-dz-title">Drop the Farmer / Member Excel here</p>
+              <p class="bu-dz-sub">or <span class="bu-dz-link">browse to choose a file</span></p>
+              <p class="bu-dz-hint">Accepts .xlsx only &nbsp;&middot;&nbsp; Any size</p>
+              <div class="bu-dz-sel" id="dzSel-farmer"><i class="fas fa-file-excel" style="color:#2F6B3F"></i><span id="dzFn-farmer">No file chosen</span></div>
+            </div>
+            <div class="bu-opts">
+              <label class="bu-opt" id="lbl-upd-farmer"><input type="checkbox" name="update_existing" id="upd-farmer" checked><div><p class="bu-opt-lbl"><i class="fas fa-sync-alt" style="color:#2F6B3F;margin-right:5px;font-size:.76rem"></i>Update existing records</p><p class="bu-opt-sub">Rows matching Form Number will be updated.</p></div></label>
+              <label class="bu-opt" id="lbl-dry-farmer"><input type="checkbox" name="dry_run" id="dry-farmer"><div><p class="bu-opt-lbl"><i class="fas fa-eye" style="color:#6f42c1;margin-right:5px;font-size:.76rem"></i>Dry run — preview only</p><p class="bu-opt-sub">Validates every row without writing. Recommended for first imports.</p></div></label>
+            </div>
+            <div class="bu-submit-row">
+              <button type="submit" class="bu-submit bu-submit-f" id="farmerSubmitBtn">
+                <span class="bu-lbl"><i class="fas fa-cloud-upload-alt"></i> Upload &amp; Import Farmers</span>
+                <span class="bu-spin-wrap"><i class="fas fa-circle-notch bu-spin"></i> Processing…</span>
+              </button>
+              <button type="button" class="bu-clear-btn" onclick="resetUpload('farmer')"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Farmer Results -->
+      <div id="farmerResults" style="display:none">
+        <div class="bu-dry-banner" id="farmerDryBanner" style="display:none"><i class="fas fa-eye"></i><div><strong>Dry Run — Nothing was saved.</strong> Uncheck "Dry run" and re-upload to commit.</div></div>
+        <div class="bu-sstrip" id="farmerSstrip">
+          <div class="bu-sc bu-sc-tot"><div class="bu-scn" id="fs-total">0</div><div class="bu-scl">Total Rows</div></div>
+          <div class="bu-sc bu-sc-cr"><div class="bu-scn" id="fs-created">0</div><div class="bu-scl">Created</div></div>
+          <div class="bu-sc bu-sc-up"><div class="bu-scn" id="fs-updated">0</div><div class="bu-scl">Updated</div></div>
+          <div class="bu-sc bu-sc-er"><div class="bu-scn" id="fs-errors">0</div><div class="bu-scl">Errors</div></div>
+          <div class="bu-sc bu-sc-sk"><div class="bu-scn" id="fs-skipped">0</div><div class="bu-scl">Skipped</div></div>
+        </div>
+        <div class="bu-rtable-card">
+          <div class="bu-rhead">
+            <i class="fas fa-list" style="color:var(--gd);font-size:.85rem"></i>
+            <span class="bu-rtitle">Import Results</span>
+            <span class="bu-rcount" id="farmerRcount">0 rows</span>
+            <div class="bu-rfilter">
+              <button class="bu-rf active" onclick="filterResults('farmer',this,'all')">All</button>
+              <button class="bu-rf bu-rf-cr" onclick="filterResults('farmer',this,'created')">Created</button>
+              <button class="bu-rf bu-rf-up" onclick="filterResults('farmer',this,'updated')">Updated</button>
+              <button class="bu-rf bu-rf-er" onclick="filterResults('farmer',this,'error')">Errors</button>
+              <button class="bu-rf bu-rf-pr" onclick="filterResults('farmer',this,'preview')">Preview</button>
+            </div>
+          </div>
+          <div class="bu-rscroll"><table class="bu-rtbl"><thead><tr><th>Row #</th><th>Unique Key</th><th>Status</th><th>Message / Error Detail</th></tr></thead><tbody id="farmerResultsBody"></tbody></table></div>
+          <div class="bu-rempty" id="farmerResultsEmpty" style="display:none"><i class="fas fa-inbox"></i><p>No data rows processed</p></div>
+        </div>
+      </div>
+    </div><!-- /tab-farmer -->
+
+
+    <!-- ══ TAB: SAHAYAK ══ -->
+    <div class="bu-panel" id="tab-sahayak">
+
+      <div class="bu-banner" style="background:linear-gradient(130deg,#1e2330,#1a2535)">
+        <div class="bu-bicon" style="background:rgba(67,86,99,.3);color:#8ab4d4"><i class="fas fa-users-cog"></i></div>
+        <div>
+          <h2 class="bu-btitle">Sahayak / MPP Upload</h2>
+          <p class="bu-bsub">Upload the MPP master sheet — create or update Milk Procurement Points. Unique key: <code class="bu-code">MPP Unique Code</code>.</p>
+        </div>
+        <div class="bu-bbadges">
+          <span class="bu-badge bu-badge-g"><i class="fas fa-shield-alt"></i> Row-validated</span>
+          <span class="bu-badge bu-badge-s"><i class="fas fa-redo"></i> Upsert on MPP Code</span>
+        </div>
+      </div>
+
+      <div class="bu-cols-card">
+        <div class="bu-cols-head">
+          <i class="fas fa-columns" style="color:#435663;font-size:.85rem"></i>
+          <span class="bu-cols-title">Required Columns</span>
+          <span class="bu-cols-hint">First row = header &nbsp;·&nbsp; Case-sensitive</span>
+        </div>
+        <div class="bu-cols-body">
+          <div class="bu-cpgrid">
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> MPP Unique Code</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> MPP Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> Plant Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> MCC Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> BMC Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> State Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> District Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> Tehsil Name</span>
+            <span class="bu-cp bu-cp-s"><i class="fas fa-asterisk"></i> Village Name</span>
+          </div>
+          <div class="bu-cnote bu-cnote-s">
+            <i class="fas fa-info-circle" style="color:#435663;flex-shrink:0;margin-top:1px"></i>
+            <span>Plant → BMC → MCC hierarchy is <strong>auto-created</strong> if absent.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card — Sahayak -->
+      <div class="bu-progress-card" id="sahayakProgressCard" style="display:none">
+        <div class="bu-progress-head bu-progress-head-s">
+          <div class="bu-progress-icon" id="sahayakProgressIcon"><i class="fas fa-circle-notch fa-spin"></i></div>
+          <div class="bu-progress-meta">
+            <div class="bu-progress-title" id="sahayakProgressTitle">Processing rows…</div>
+            <div class="bu-progress-sub" id="sahayakProgressSub">Preparing import</div>
+          </div>
+          <div class="bu-progress-counts">
+            <span class="bpc bpc-cr"><i class="fas fa-plus-circle"></i> <span id="spc-created">0</span></span>
+            <span class="bpc bpc-up"><i class="fas fa-sync-alt"></i> <span id="spc-updated">0</span></span>
+            <span class="bpc bpc-er"><i class="fas fa-exclamation-circle"></i> <span id="spc-errors">0</span></span>
+            <span class="bpc bpc-sk"><i class="fas fa-minus-circle"></i> <span id="spc-skipped">0</span></span>
+          </div>
+        </div>
+        <div class="bu-pbar-track"><div class="bu-pbar-fill bu-pbar-fill-s" id="sahayakPbarFill" style="width:0%"></div></div>
+        <div class="bu-pbar-labels"><span id="sahayakPbarDone">0 / 0 rows</span><span id="sahayakPbarPct">0%</span></div>
+        <div class="bu-livelog" id="sahayakLiveLog"><div class="bu-livelog-empty">Waiting for rows…</div></div>
+        <div class="bu-rollback-warn" id="sahayakRollbackWarn" style="display:none">
+          <i class="fas fa-undo-alt"></i>
+          <div><strong>Batch rolled back — nothing was saved.</strong><div id="sahayakRollbackReason"></div></div>
+        </div>
+      </div>
+
+      <div class="bu-form-card">
+        <div class="bu-fhead bu-fhead-s"><i class="fas fa-file-excel" style="color:#435663"></i><span class="bu-ftitle">Select &amp; Upload Excel File</span></div>
+        <div class="bu-fbody">
+          <form class="bu-form" id="form-sahayak" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="upload_type" value="sahayak">
+            <div class="bu-dz bu-dz-s" id="dz-sahayak">
+              <input type="file" name="excel_file" id="fi-sahayak" accept=".xlsx">
+              <div class="bu-dz-icon"><i class="fas fa-file-excel"></i></div>
+              <p class="bu-dz-title">Drop the Sahayak / MPP Excel here</p>
+              <p class="bu-dz-sub">or <span class="bu-dz-link">browse to choose a file</span></p>
+              <p class="bu-dz-hint">Accepts .xlsx only &nbsp;&middot;&nbsp; Any size</p>
+              <div class="bu-dz-sel bu-dz-sel-s" id="dzSel-sahayak"><i class="fas fa-file-excel" style="color:#435663"></i><span id="dzFn-sahayak">No file chosen</span></div>
+            </div>
+            <div class="bu-opts">
+              <label class="bu-opt bu-opt-s" id="lbl-upd-sahayak"><input type="checkbox" name="update_existing" id="upd-sahayak" checked><div><p class="bu-opt-lbl"><i class="fas fa-sync-alt" style="color:#435663;margin-right:5px;font-size:.76rem"></i>Update existing records</p><p class="bu-opt-sub">Rows matching MPP Unique Code will be updated.</p></div></label>
+              <label class="bu-opt bu-opt-s" id="lbl-dry-sahayak"><input type="checkbox" name="dry_run" id="dry-sahayak"><div><p class="bu-opt-lbl"><i class="fas fa-eye" style="color:#6f42c1;margin-right:5px;font-size:.76rem"></i>Dry run — preview only</p><p class="bu-opt-sub">Validates without writing. Good for large MPP master imports.</p></div></label>
+            </div>
+            <div class="bu-submit-row">
+              <button type="submit" class="bu-submit bu-submit-s" id="sahayakSubmitBtn">
+                <span class="bu-lbl"><i class="fas fa-cloud-upload-alt"></i> Upload &amp; Import MPPs</span>
+                <span class="bu-spin-wrap"><i class="fas fa-circle-notch bu-spin"></i> Processing…</span>
+              </button>
+              <button type="button" class="bu-clear-btn" onclick="resetUpload('sahayak')"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Sahayak Results -->
+      <div id="sahayakResults" style="display:none">
+        <div class="bu-dry-banner" id="sahayakDryBanner" style="display:none"><i class="fas fa-eye"></i><div><strong>Dry Run — Nothing was saved.</strong> Uncheck "Dry run" and re-upload to commit.</div></div>
+        <div class="bu-sstrip">
+          <div class="bu-sc bu-sc-tot"><div class="bu-scn" id="ss-total">0</div><div class="bu-scl">Total Rows</div></div>
+          <div class="bu-sc bu-sc-cr"><div class="bu-scn" id="ss-created">0</div><div class="bu-scl">Created</div></div>
+          <div class="bu-sc bu-sc-up"><div class="bu-scn" id="ss-updated">0</div><div class="bu-scl">Updated</div></div>
+          <div class="bu-sc bu-sc-er"><div class="bu-scn" id="ss-errors">0</div><div class="bu-scl">Errors</div></div>
+          <div class="bu-sc bu-sc-sk"><div class="bu-scn" id="ss-skipped">0</div><div class="bu-scl">Skipped</div></div>
+        </div>
+        <div class="bu-rtable-card">
+          <div class="bu-rhead">
+            <i class="fas fa-list" style="color:#435663;font-size:.85rem"></i>
+            <span class="bu-rtitle">Import Results</span>
+            <span class="bu-rcount" id="sahayakRcount">0 rows</span>
+            <div class="bu-rfilter">
+              <button class="bu-rf active" onclick="filterResults('sahayak',this,'all')">All</button>
+              <button class="bu-rf bu-rf-cr" onclick="filterResults('sahayak',this,'created')">Created</button>
+              <button class="bu-rf bu-rf-up" onclick="filterResults('sahayak',this,'updated')">Updated</button>
+              <button class="bu-rf bu-rf-er" onclick="filterResults('sahayak',this,'error')">Errors</button>
+              <button class="bu-rf bu-rf-pr" onclick="filterResults('sahayak',this,'preview')">Preview</button>
+            </div>
+          </div>
+          <div class="bu-rscroll"><table class="bu-rtbl"><thead><tr><th>Row #</th><th>Unique Key</th><th>Status</th><th>Message / Error Detail</th></tr></thead><tbody id="sahayakResultsBody"></tbody></table></div>
+          <div class="bu-rempty" id="sahayakResultsEmpty" style="display:none"><i class="fas fa-inbox"></i><p>No data rows processed</p></div>
+        </div>
+      </div>
+    </div><!-- /tab-sahayak -->
+
+
+    <!-- ══ TAB: TRANSPORTER ══ -->
+    <div class="bu-panel" id="tab-transporter">
+
+      <div class="bu-banner" style="background:linear-gradient(130deg,#1e2330,#2a180a)">
+        <div class="bu-bicon" style="background:rgba(200,90,10,.28);color:#f4a470"><i class="fas fa-truck"></i></div>
+        <div>
+          <h2 class="bu-btitle">Transporter Upload</h2>
+          <p class="bu-bsub">Upload the SAP vendor master sheet — create or update transporter records. Unique key: <code class="bu-code">Vendor Code</code> or <code class="bu-code">VENDOR</code>.</p>
+        </div>
+        <div class="bu-bbadges">
+          <span class="bu-badge bu-badge-g"><i class="fas fa-shield-alt"></i> Row-validated</span>
+          <span class="bu-badge bu-badge-o"><i class="fas fa-redo"></i> Upsert on Vendor Code</span>
+        </div>
+      </div>
+
+      <div class="bu-cols-card">
+        <div class="bu-cols-head">
+          <i class="fas fa-columns" style="color:#c85a0a;font-size:.85rem"></i>
+          <span class="bu-cols-title">Required Columns</span>
+          <span class="bu-cols-hint">First row = header &nbsp;·&nbsp; Alias-resolved automatically</span>
+        </div>
+        <div class="bu-cols-body">
+          <div class="bu-cpgrid">
+            <span class="bu-cp bu-cp-t"><i class="fas fa-asterisk"></i> Vendor Code <small style="opacity:.6">or VENDOR</small></span>
+            <span class="bu-cp bu-cp-t"><i class="fas fa-asterisk"></i> Vendor Name <small style="opacity:.6">or VENDOR NAME</small></span>
+          </div>
+          <div class="bu-cnote bu-cnote-t">
+            <i class="fas fa-info-circle" style="color:#c85a0a;flex-shrink:0;margin-top:1px"></i>
+            <span>SAP raw export headers (<code>VENDOR</code>, <code>VENDOR NAME</code>, <code>G/L ACCOUNT</code>, <code>CREATED ON</code>, etc.) are <strong>automatically mapped</strong> to the correct fields — no renaming needed. All other fields are optional.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card — Transporter -->
+      <div class="bu-progress-card" id="transporterProgressCard" style="display:none">
+        <div class="bu-progress-head bu-progress-head-t">
+          <div class="bu-progress-icon" id="transporterProgressIcon"><i class="fas fa-circle-notch fa-spin"></i></div>
+          <div class="bu-progress-meta">
+            <div class="bu-progress-title" id="transporterProgressTitle">Processing rows…</div>
+            <div class="bu-progress-sub" id="transporterProgressSub">Preparing import</div>
+          </div>
+          <div class="bu-progress-counts">
+            <span class="bpc bpc-cr"><i class="fas fa-plus-circle"></i> <span id="tpc-created">0</span></span>
+            <span class="bpc bpc-up"><i class="fas fa-sync-alt"></i> <span id="tpc-updated">0</span></span>
+            <span class="bpc bpc-er"><i class="fas fa-exclamation-circle"></i> <span id="tpc-errors">0</span></span>
+            <span class="bpc bpc-sk"><i class="fas fa-minus-circle"></i> <span id="tpc-skipped">0</span></span>
+          </div>
+        </div>
+        <div class="bu-pbar-track"><div class="bu-pbar-fill bu-pbar-fill-t" id="transporterPbarFill" style="width:0%"></div></div>
+        <div class="bu-pbar-labels"><span id="transporterPbarDone">0 / 0 rows</span><span id="transporterPbarPct">0%</span></div>
+        <div class="bu-livelog" id="transporterLiveLog"><div class="bu-livelog-empty">Waiting for rows…</div></div>
+        <div class="bu-rollback-warn" id="transporterRollbackWarn" style="display:none">
+          <i class="fas fa-undo-alt"></i>
+          <div><strong>Batch rolled back — nothing was saved.</strong><div id="transporterRollbackReason"></div></div>
+        </div>
+      </div>
+
+      <div class="bu-form-card">
+        <div class="bu-fhead bu-fhead-t"><i class="fas fa-file-excel" style="color:#c85a0a"></i><span class="bu-ftitle">Select &amp; Upload Excel File</span></div>
+        <div class="bu-fbody">
+          <form class="bu-form" id="form-transporter" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="upload_type" value="transporter">
+            <div class="bu-dz bu-dz-t" id="dz-transporter">
+              <input type="file" name="excel_file" id="fi-transporter" accept=".xlsx">
+              <div class="bu-dz-icon"><i class="fas fa-file-excel"></i></div>
+              <p class="bu-dz-title">Drop the Transporter Excel here</p>
+              <p class="bu-dz-sub">or <span class="bu-dz-link">browse to choose a file</span></p>
+              <p class="bu-dz-hint">Accepts .xlsx only &nbsp;&middot;&nbsp; Any size</p>
+              <div class="bu-dz-sel bu-dz-sel-t" id="dzSel-transporter"><i class="fas fa-file-excel" style="color:#c85a0a"></i><span id="dzFn-transporter">No file chosen</span></div>
+            </div>
+            <div class="bu-opts">
+              <label class="bu-opt bu-opt-t" id="lbl-upd-transporter"><input type="checkbox" name="update_existing" id="upd-transporter" checked><div><p class="bu-opt-lbl"><i class="fas fa-sync-alt" style="color:#c85a0a;margin-right:5px;font-size:.76rem"></i>Update existing records</p><p class="bu-opt-sub">Rows matching Vendor Code will be updated.</p></div></label>
+              <label class="bu-opt bu-opt-t" id="lbl-dry-transporter"><input type="checkbox" name="dry_run" id="dry-transporter"><div><p class="bu-opt-lbl"><i class="fas fa-eye" style="color:#6f42c1;margin-right:5px;font-size:.76rem"></i>Dry run — preview only</p><p class="bu-opt-sub">Validates without saving. Good for verifying bank details and GST.</p></div></label>
+            </div>
+            <div class="bu-submit-row">
+              <button type="submit" class="bu-submit bu-submit-t" id="transporterSubmitBtn">
+                <span class="bu-lbl"><i class="fas fa-cloud-upload-alt"></i> Upload &amp; Import Transporters</span>
+                <span class="bu-spin-wrap"><i class="fas fa-circle-notch bu-spin"></i> Processing…</span>
+              </button>
+              <button type="button" class="bu-clear-btn" onclick="resetUpload('transporter')"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Transporter Results -->
+      <div id="transporterResults" style="display:none">
+        <div class="bu-dry-banner" id="transporterDryBanner" style="display:none"><i class="fas fa-eye"></i><div><strong>Dry Run — Nothing was saved.</strong> Uncheck "Dry run" and re-upload to commit.</div></div>
+        <div class="bu-sstrip">
+          <div class="bu-sc bu-sc-tot"><div class="bu-scn" id="ts-total">0</div><div class="bu-scl">Total Rows</div></div>
+          <div class="bu-sc bu-sc-cr"><div class="bu-scn" id="ts-created">0</div><div class="bu-scl">Created</div></div>
+          <div class="bu-sc bu-sc-up"><div class="bu-scn" id="ts-updated">0</div><div class="bu-scl">Updated</div></div>
+          <div class="bu-sc bu-sc-er"><div class="bu-scn" id="ts-errors">0</div><div class="bu-scl">Errors</div></div>
+          <div class="bu-sc bu-sc-sk"><div class="bu-scn" id="ts-skipped">0</div><div class="bu-scl">Skipped</div></div>
+        </div>
+        <div class="bu-rtable-card">
+          <div class="bu-rhead">
+            <i class="fas fa-list" style="color:#c85a0a;font-size:.85rem"></i>
+            <span class="bu-rtitle">Import Results</span>
+            <span class="bu-rcount" id="transporterRcount">0 rows</span>
+            <div class="bu-rfilter">
+              <button class="bu-rf active" onclick="filterResults('transporter',this,'all')">All</button>
+              <button class="bu-rf bu-rf-cr" onclick="filterResults('transporter',this,'created')">Created</button>
+              <button class="bu-rf bu-rf-up" onclick="filterResults('transporter',this,'updated')">Updated</button>
+              <button class="bu-rf bu-rf-er" onclick="filterResults('transporter',this,'error')">Errors</button>
+              <button class="bu-rf bu-rf-pr" onclick="filterResults('transporter',this,'preview')">Preview</button>
+            </div>
+          </div>
+          <div class="bu-rscroll"><table class="bu-rtbl"><thead><tr><th>Row #</th><th>Unique Key</th><th>Status</th><th>Message / Error Detail</th></tr></thead><tbody id="transporterResultsBody"></tbody></table></div>
+          <div class="bu-rempty" id="transporterResultsEmpty" style="display:none"><i class="fas fa-inbox"></i><p>No data rows processed</p></div>
+        </div>
+      </div>
+    </div><!-- /tab-transporter -->
+
+
+    <!-- ══ TAB: EMPLOYEE ══ -->
+    <div class="bu-panel" id="tab-employee">
+
+      <div class="bu-banner" style="background:linear-gradient(130deg,#1e2330,#20122a)">
+        <div class="bu-bicon" style="background:rgba(108,52,131,.3);color:#c39bd3"><i class="fas fa-user-tie"></i></div>
+        <div>
+          <h2 class="bu-btitle">Employee Upload</h2>
+          <p class="bu-bsub">Upload the employee master sheet — create or update staff records. Unique key: <code class="bu-code">Employee Code</code>. Manager links resolved in a second pass.</p>
+        </div>
+        <div class="bu-bbadges">
+          <span class="bu-badge bu-badge-g"><i class="fas fa-shield-alt"></i> Row-validated</span>
+          <span class="bu-badge bu-badge-p"><i class="fas fa-redo"></i> Upsert on Emp. Code</span>
+          <span class="bu-badge bu-badge-p2"><i class="fas fa-sitemap"></i> Manager links auto-resolved</span>
+        </div>
+      </div>
+
+      <div class="bu-cols-card">
+        <div class="bu-cols-head">
+          <i class="fas fa-columns" style="color:#6c3483;font-size:.85rem"></i>
+          <span class="bu-cols-title">Required &amp; Supported Columns</span>
+          <span class="bu-cols-hint">First row = header &nbsp;·&nbsp; Aliases resolved automatically</span>
+        </div>
+        <div class="bu-cols-body">
+          <p style="font-size:.67rem;font-weight:700;color:#6c3483;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="fas fa-asterisk" style="font-size:.5rem"></i> Required</p>
+          <div class="bu-cpgrid" style="margin-bottom:10px">
+            <span class="bu-cp bu-cp-e"><i class="fas fa-asterisk"></i> Employee Code <small style="opacity:.6">/ Emp Code</small></span>
+            <span class="bu-cp bu-cp-e"><i class="fas fa-asterisk"></i> First Name <small style="opacity:.6">/ Name</small></span>
+          </div>
+          <p style="font-size:.67rem;font-weight:700;color:#6c3483;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;opacity:.7">Optional columns (alias-resolved)</p>
+          <div class="bu-cpgrid">
+            <span class="bu-cp bu-cp-e-opt">Last Name <small>/ Surname</small></span>
+            <span class="bu-cp bu-cp-e-opt">Department <small>/ Dept</small></span>
+            <span class="bu-cp bu-cp-e-opt">Designation <small>/ Title / Role</small></span>
+            <span class="bu-cp bu-cp-e-opt">Grade <small>/ Employee Grade</small></span>
+            <span class="bu-cp bu-cp-e-opt">Branch <small>/ Work Location</small></span>
+            <span class="bu-cp bu-cp-e-opt">Employee Email Id <small>/ Email</small></span>
+            <span class="bu-cp bu-cp-e-opt">Employee Phone Number <small>/ Mobile</small></span>
+            <span class="bu-cp bu-cp-e-opt">Reporting Manager <small>/ Manager Code</small></span>
+            <span class="bu-cp bu-cp-e-opt">Functional Manager <small>/ Func. Mgr Code</small></span>
+          </div>
+          <div class="bu-cnote bu-cnote-e">
+            <i class="fas fa-info-circle" style="color:#6c3483;flex-shrink:0;margin-top:1px"></i>
+            <span>
+              Import runs in <strong>two passes</strong>: employees are created/updated first, then
+              <code>Reporting Manager</code> codes are resolved to FK links in a second sweep —
+              so a manager imported in the same file will be correctly linked.
+              If an email is blank or missing, a placeholder
+              <code>&lt;employee_code&gt;@shwetdhara.local</code> is generated automatically.
+              Passwords are set unusable; employees must use password-reset to log in.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card — Employee -->
+      <div class="bu-progress-card" id="employeeProgressCard" style="display:none">
+        <div class="bu-progress-head bu-progress-head-e">
+          <div class="bu-progress-icon" id="employeeProgressIcon"><i class="fas fa-circle-notch fa-spin"></i></div>
+          <div class="bu-progress-meta">
+            <div class="bu-progress-title" id="employeeProgressTitle">Processing rows…</div>
+            <div class="bu-progress-sub" id="employeeProgressSub">Preparing import</div>
+          </div>
+          <div class="bu-progress-counts">
+            <span class="bpc bpc-cr"><i class="fas fa-plus-circle"></i> <span id="epc-created">0</span></span>
+            <span class="bpc bpc-up"><i class="fas fa-sync-alt"></i> <span id="epc-updated">0</span></span>
+            <span class="bpc bpc-er"><i class="fas fa-exclamation-circle"></i> <span id="epc-errors">0</span></span>
+            <span class="bpc bpc-sk"><i class="fas fa-minus-circle"></i> <span id="epc-skipped">0</span></span>
+          </div>
+        </div>
+        <div class="bu-pbar-track"><div class="bu-pbar-fill bu-pbar-fill-e" id="employeePbarFill" style="width:0%"></div></div>
+        <div class="bu-pbar-labels"><span id="employeePbarDone">0 / 0 rows</span><span id="employeePbarPct">0%</span></div>
+        <div class="bu-livelog" id="employeeLiveLog"><div class="bu-livelog-empty">Waiting for rows…</div></div>
+        <div class="bu-rollback-warn" id="employeeRollbackWarn" style="display:none">
+          <i class="fas fa-undo-alt"></i>
+          <div><strong>Batch rolled back — nothing was saved.</strong><div id="employeeRollbackReason"></div></div>
+        </div>
+      </div>
+
+      <div class="bu-form-card">
+        <div class="bu-fhead bu-fhead-e"><i class="fas fa-file-excel" style="color:#6c3483"></i><span class="bu-ftitle">Select &amp; Upload Excel File</span></div>
+        <div class="bu-fbody">
+          <form class="bu-form" id="form-employee" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="upload_type" value="employee">
+            <div class="bu-dz bu-dz-e" id="dz-employee">
+              <input type="file" name="excel_file" id="fi-employee" accept=".xlsx">
+              <div class="bu-dz-icon"><i class="fas fa-file-excel"></i></div>
+              <p class="bu-dz-title">Drop the Employee Excel here</p>
+              <p class="bu-dz-sub">or <span class="bu-dz-link">browse to choose a file</span></p>
+              <p class="bu-dz-hint">Accepts .xlsx only &nbsp;&middot;&nbsp; Any size</p>
+              <div class="bu-dz-sel bu-dz-sel-e" id="dzSel-employee"><i class="fas fa-file-excel" style="color:#6c3483"></i><span id="dzFn-employee">No file chosen</span></div>
+            </div>
+            <div class="bu-opts">
+              <label class="bu-opt bu-opt-e" id="lbl-upd-employee"><input type="checkbox" name="update_existing" id="upd-employee" checked><div><p class="bu-opt-lbl"><i class="fas fa-sync-alt" style="color:#6c3483;margin-right:5px;font-size:.76rem"></i>Update existing records</p><p class="bu-opt-sub">Rows matching Employee Code will be updated.</p></div></label>
+              <label class="bu-opt bu-opt-e" id="lbl-dry-employee"><input type="checkbox" name="dry_run" id="dry-employee"><div><p class="bu-opt-lbl"><i class="fas fa-eye" style="color:#6f42c1;margin-right:5px;font-size:.76rem"></i>Dry run — preview only</p><p class="bu-opt-sub">Validates without saving. Recommended before bulk employee imports.</p></div></label>
+            </div>
+            <div class="bu-submit-row">
+              <button type="submit" class="bu-submit bu-submit-e" id="employeeSubmitBtn">
+                <span class="bu-lbl"><i class="fas fa-cloud-upload-alt"></i> Upload &amp; Import Employees</span>
+                <span class="bu-spin-wrap"><i class="fas fa-circle-notch bu-spin"></i> Processing…</span>
+              </button>
+              <button type="button" class="bu-clear-btn" onclick="resetUpload('employee')"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Employee Results -->
+      <div id="employeeResults" style="display:none">
+        <div class="bu-dry-banner" id="employeeDryBanner" style="display:none"><i class="fas fa-eye"></i><div><strong>Dry Run — Nothing was saved.</strong> Uncheck "Dry run" and re-upload to commit.</div></div>
+        <div class="bu-sstrip">
+          <div class="bu-sc bu-sc-tot"><div class="bu-scn" id="es-total">0</div><div class="bu-scl">Total Rows</div></div>
+          <div class="bu-sc bu-sc-cr"><div class="bu-scn" id="es-created">0</div><div class="bu-scl">Created</div></div>
+          <div class="bu-sc bu-sc-up"><div class="bu-scn" id="es-updated">0</div><div class="bu-scl">Updated</div></div>
+          <div class="bu-sc bu-sc-er"><div class="bu-scn" id="es-errors">0</div><div class="bu-scl">Errors</div></div>
+          <div class="bu-sc bu-sc-sk"><div class="bu-scn" id="es-skipped">0</div><div class="bu-scl">Skipped</div></div>
+        </div>
+        <div class="bu-rtable-card">
+          <div class="bu-rhead">
+            <i class="fas fa-list" style="color:#6c3483;font-size:.85rem"></i>
+            <span class="bu-rtitle">Import Results</span>
+            <span class="bu-rcount" id="employeeRcount">0 rows</span>
+            <div class="bu-rfilter">
+              <button class="bu-rf active" onclick="filterResults('employee',this,'all')">All</button>
+              <button class="bu-rf bu-rf-cr" onclick="filterResults('employee',this,'created')">Created</button>
+              <button class="bu-rf bu-rf-up" onclick="filterResults('employee',this,'updated')">Updated</button>
+              <button class="bu-rf bu-rf-er" onclick="filterResults('employee',this,'error')">Errors</button>
+              <button class="bu-rf bu-rf-pr" onclick="filterResults('employee',this,'preview')">Preview</button>
+            </div>
+          </div>
+          <div class="bu-rscroll"><table class="bu-rtbl"><thead><tr><th>Row #</th><th>Unique Key</th><th>Status</th><th>Message / Error Detail</th></tr></thead><tbody id="employeeResultsBody"></tbody></table></div>
+          <div class="bu-rempty" id="employeeResultsEmpty" style="display:none"><i class="fas fa-inbox"></i><p>No data rows processed</p></div>
+        </div>
+      </div>
+    </div><!-- /tab-employee -->
+
+  </main>
+</div><!-- /ksts-wrapper -->
+
+<!-- Toast -->
+<div class="ksts-toast hidden" id="buToast">
+  <i class="fas fa-check-circle"></i>
+  <span id="buToastMsg">Done!</span>
+  <button onclick="document.getElementById('buToast').classList.add('hidden')"><i class="fas fa-times"></i></button>
+</div>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.hidden{display:none!important}
+:root{
+  --gd:#2F6B3F;--gm:#3a7d4f;--gl:#A3B087;--nv:#313647;--nl:#435663;
+  --cr:#FFF8D4;--tx:#1e2330;--tm:#435663;--tl:#7f8c8d;
+  --br:rgba(163,176,135,0.25);--sm:0 2px 8px rgba(49,54,71,.06);
+  --md:0 8px 32px rgba(49,54,71,.10);--lg:0 20px 60px rgba(49,54,71,.15);
+  --r1:8px;--r2:14px;--r3:20px;--r4:28px;
+  --ep:#6c3483;--epm:#8e44ad;--epl:#c39bd3;
+}
+body{font-family:'Lexend',sans-serif;background:#f2f4f0;color:var(--tx);zoom:75%}
+.ksts-wrapper{display:flex;align-items:stretch;min-height:calc(100vh - 90px)}
+/* SIDEBAR */
+.ksts-sidebar{width:300px;flex-shrink:0;background:var(--nv);border-radius:0 var(--r4) var(--r4) 0;margin:24px 0 24px 12px;box-shadow:var(--lg)}
+.sidebar-inner{padding:28px 22px;display:flex;flex-direction:column;gap:22px;height:100%}
+.profile-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.avatar-ring{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gd),var(--gl));display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(163,176,135,.3)}
+.avatar-initials{font-size:1.4rem;font-weight:700;color:var(--cr)}
+.profile-meta{text-align:center}
+.profile-name{font-size:1rem;font-weight:600;color:var(--cr)}
+.profile-role{font-size:.78rem;color:var(--gl);display:flex;align-items:center;gap:6px;justify-content:center;margin-top:3px}
+.profile-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.pbadge{padding:3px 10px;background:rgba(163,176,135,.12);border-radius:20px;font-size:.72rem;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:5px}
+.pbadge i{color:var(--gl)}
+.sidebar-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sstat{border-radius:var(--r2);padding:12px 14px;display:flex;flex-direction:column;gap:2px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+.sstat-num{font-size:1.7rem;font-weight:700;color:white;line-height:1}
+.sstat-lbl{font-size:.7rem;color:rgba(255,255,255,.6)}
+.sstat-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:1.6rem;opacity:.14;color:white}
+.sidebar-section-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.35)}
+.sidebar-nav{display:flex;flex-direction:column;gap:6px}
+.snav-btn{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r2);background:rgba(163,176,135,.08);border:1px solid rgba(163,176,135,.12);color:rgba(255,255,255,.75);font-family:'Lexend',sans-serif;font-size:.88rem;font-weight:400;cursor:pointer;transition:all .25s ease;text-align:left;width:100%;position:relative;overflow:hidden;text-decoration:none}
+.snav-btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:var(--gd);transition:width .25s ease;z-index:0;border-radius:var(--r2)}
+.snav-btn>*{position:relative;z-index:1}
+.snav-btn:hover::before,.snav-btn.active::before{width:100%}
+.snav-btn:hover,.snav-btn.active{color:white;border-color:var(--gd);transform:translateX(4px);box-shadow:0 4px 14px rgba(47,107,63,.35)}
+/* Employee tab gets purple active state */
+.snav-btn[data-tab="employee"]::before{background:var(--ep)}
+.snav-btn[data-tab="employee"]:hover,.snav-btn[data-tab="employee"].active{border-color:var(--ep);box-shadow:0 4px 14px rgba(108,52,131,.35)}
+.snav-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.snav-icon i{font-size:1rem;color:var(--gl)}
+.snav-btn:hover .snav-icon i,.snav-btn.active .snav-icon i{color:var(--cr)}
+.snav-text{flex:1}
+.snav-arrow i{font-size:.65rem;opacity:.5;transition:transform .2s}
+.snav-btn:hover .snav-arrow i{transform:translateX(4px);opacity:1}
+.sidebar-help{margin-top:auto;display:flex;gap:12px;align-items:center;padding:14px;border-radius:var(--r2);background:rgba(255,248,212,.06);border:1px solid rgba(255,248,212,.1)}
+.sidebar-help>i{font-size:1.3rem;color:var(--gl);flex-shrink:0}
+.help-title{font-size:.82rem;font-weight:600;color:var(--cr)}
+.help-sub{font-size:.75rem;color:rgba(255,255,255,.5)}
+/* MAIN */
+.ksts-main{flex:1;display:flex;flex-direction:column;gap:24px;padding:24px 24px 40px 20px;overflow-y:auto;min-width:0}
+.topbar{background:linear-gradient(135deg,var(--gd) 0%,var(--gm) 100%);border-radius:var(--r3);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:var(--md);border:2px solid rgba(0,0,0,.08)}
+.topbar-title{font-size:1.6rem;font-weight:700;color:var(--cr);display:flex;align-items:center;gap:10px}
+.topbar-title i{color:var(--gl)}
+.topbar-sub{font-size:.8rem;color:rgba(255,248,212,.6);margin-top:3px}
+.topbar-date{display:flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(255,255,255,.1);border-radius:50px;font-size:.82rem;color:rgba(255,248,212,.8);white-space:nowrap}
+.topbar-date i{color:rgba(255,248,212,.6)}
+/* TABS */
+.bu-panel{display:none;flex-direction:column;gap:20px}
+.bu-panel.active{display:flex;animation:buFadeIn .28s ease}
+@keyframes buFadeIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+/* BANNER */
+.bu-banner{border-radius:var(--r3);padding:22px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:var(--lg);border:1px solid rgba(255,255,255,.04)}
+.bu-bicon{width:52px;height:52px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.bu-btitle{font-size:1.2rem;font-weight:700;color:var(--cr)}
+.bu-bsub{font-size:.75rem;color:rgba(255,255,255,.38);margin-top:4px;line-height:1.6}
+.bu-code{font-family:'JetBrains Mono',monospace;font-size:.68rem;background:rgba(255,255,255,.14);padding:1px 6px;border-radius:4px;color:var(--cr)}
+.bu-bbadges{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;align-self:flex-start}
+.bu-badge{padding:4px 12px;border-radius:20px;font-size:.66rem;font-weight:700;display:flex;align-items:center;gap:4px;letter-spacing:.05em;text-transform:uppercase}
+.bu-badge-g{background:rgba(47,107,63,.22);color:#72d68a;border:1px solid rgba(47,107,63,.38)}
+.bu-badge-b{background:rgba(23,162,184,.2);color:#7dd8ee;border:1px solid rgba(23,162,184,.35)}
+.bu-badge-s{background:rgba(67,86,99,.28);color:#8ab4d4;border:1px solid rgba(67,86,99,.42)}
+.bu-badge-o{background:rgba(200,90,10,.22);color:#f4a470;border:1px solid rgba(200,90,10,.38)}
+.bu-badge-p{background:rgba(108,52,131,.22);color:#c39bd3;border:1px solid rgba(108,52,131,.38)}
+.bu-badge-p2{background:rgba(108,52,131,.14);color:#d7bde2;border:1px solid rgba(108,52,131,.28)}
+/* COLUMNS CARD */
+.bu-cols-card{background:white;border-radius:var(--r3);border:1.5px solid var(--br);box-shadow:var(--sm);overflow:hidden}
+.bu-cols-head{display:flex;align-items:center;gap:10px;padding:13px 20px;background:linear-gradient(90deg,rgba(47,107,63,.055),rgba(163,176,135,.07));border-bottom:1.5px solid var(--br)}
+.bu-cols-title{font-size:.76rem;font-weight:700;color:var(--nv);text-transform:uppercase;letter-spacing:.07em}
+.bu-cols-hint{margin-left:auto;font-size:.65rem;color:var(--tl)}
+.bu-cols-body{padding:15px 20px}
+.bu-cpgrid{display:flex;flex-wrap:wrap;gap:7px}
+.bu-cp{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:.67rem;font-weight:600}
+.bu-cp i{font-size:.5rem}
+.bu-cp small{font-family:'Lexend',sans-serif;font-weight:400}
+.bu-cp-f{background:rgba(47,107,63,.08);border:1.5px solid rgba(47,107,63,.24);color:#2F6B3F}
+.bu-cp-s{background:rgba(67,86,99,.08);border:1.5px solid rgba(67,86,99,.26);color:#435663}
+.bu-cp-t{background:rgba(200,90,10,.07);border:1.5px solid rgba(200,90,10,.26);color:#c85a0a}
+.bu-cp-e{background:rgba(108,52,131,.09);border:1.5px solid rgba(108,52,131,.28);color:#6c3483}
+.bu-cp-e-opt{background:rgba(108,52,131,.04);border:1.5px solid rgba(108,52,131,.14);color:#8e44ad;font-family:'JetBrains Mono',monospace;font-size:.67rem;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.bu-cp-e-opt small{font-family:'Lexend',sans-serif;font-weight:400;opacity:.65}
+.bu-cnote{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:9px 13px;border-radius:var(--r1);border:1px solid;font-size:.72rem;line-height:1.65}
+.bu-cnote code{font-family:'JetBrains Mono',monospace;font-size:.67rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px}
+.bu-cnote-f{background:rgba(255,193,7,.05);border-color:rgba(255,193,7,.2);color:#7a5a00}
+.bu-cnote-s{background:rgba(67,86,99,.05);border-color:rgba(67,86,99,.2);color:#2c3e50}
+.bu-cnote-t{background:rgba(200,90,10,.05);border-color:rgba(200,90,10,.18);color:#6b2d00}
+.bu-cnote-e{background:rgba(108,52,131,.05);border-color:rgba(108,52,131,.2);color:#4a235a}
+/* FORM CARD */
+.bu-form-card{background:white;border-radius:var(--r3);border:1.5px solid var(--br);box-shadow:var(--sm);overflow:hidden}
+.bu-fhead{display:flex;align-items:center;gap:9px;padding:13px 22px;border-bottom:1.5px solid var(--br)}
+.bu-fhead-f{background:linear-gradient(90deg,rgba(47,107,63,.06),rgba(47,107,63,.02))}
+.bu-fhead-s{background:linear-gradient(90deg,rgba(67,86,99,.07),rgba(67,86,99,.02))}
+.bu-fhead-t{background:linear-gradient(90deg,rgba(200,90,10,.07),rgba(200,90,10,.02))}
+.bu-fhead-e{background:linear-gradient(90deg,rgba(108,52,131,.07),rgba(108,52,131,.02))}
+.bu-ftitle{font-size:.82rem;font-weight:700;color:var(--nv)}
+.bu-fbody{padding:22px}
+/* DROP ZONE */
+.bu-dz{border:2.5px dashed rgba(163,176,135,.48);border-radius:var(--r2);padding:30px 22px;text-align:center;cursor:pointer;transition:all .24s;background:rgba(163,176,135,.03);position:relative;margin-bottom:18px}
+.bu-dz-s{border-color:rgba(67,86,99,.36)}
+.bu-dz-t{border-color:rgba(200,90,10,.34)}
+.bu-dz-e{border-color:rgba(108,52,131,.34)}
+.bu-dz:focus-within,.bu-dz.drag-over{border-color:var(--gd);background:rgba(47,107,63,.05);box-shadow:0 0 0 4px rgba(47,107,63,.09)}
+.bu-dz-s:focus-within,.bu-dz-s.drag-over{border-color:#435663;background:rgba(67,86,99,.05)}
+.bu-dz-t:focus-within,.bu-dz-t.drag-over{border-color:#c85a0a;background:rgba(200,90,10,.05)}
+.bu-dz-e:focus-within,.bu-dz-e.drag-over{border-color:#6c3483;background:rgba(108,52,131,.05);box-shadow:0 0 0 4px rgba(108,52,131,.09)}
+.bu-dz input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.bu-dz-icon{width:56px;height:56px;border-radius:50%;background:rgba(163,176,135,.14);display:flex;align-items:center;justify-content:center;font-size:1.45rem;color:var(--gl);margin:0 auto 10px}
+.bu-dz-title{font-size:.88rem;font-weight:600;color:var(--nv);margin-bottom:3px}
+.bu-dz-sub{font-size:.73rem;color:var(--tl);line-height:1.6}
+.bu-dz-hint{font-size:.66rem;color:var(--tl);margin-top:3px}
+.bu-dz-link{color:var(--gd);font-weight:700;text-decoration:underline}
+.bu-dz-sel{margin-top:11px;padding:7px 14px;border-radius:var(--r1);background:rgba(47,107,63,.08);border:1px solid rgba(47,107,63,.2);font-size:.73rem;font-weight:600;color:var(--gd);display:none;align-items:center;gap:7px;justify-content:center}
+.bu-dz-sel.visible{display:flex}
+.bu-dz-sel-s{background:rgba(67,86,99,.08);border-color:rgba(67,86,99,.2);color:#435663}
+.bu-dz-sel-t{background:rgba(200,90,10,.07);border-color:rgba(200,90,10,.2);color:#c85a0a}
+.bu-dz-sel-e{background:rgba(108,52,131,.07);border-color:rgba(108,52,131,.2);color:#6c3483}
+/* OPTIONS */
+.bu-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.bu-opt{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-radius:var(--r2);border:1.5px solid var(--br);background:#fafbf8;cursor:pointer;transition:all .2s}
+.bu-opt:hover{border-color:var(--gl)}
+.bu-opt input[type="checkbox"]{width:15px;height:15px;accent-color:var(--gd);flex-shrink:0;margin-top:2px}
+.bu-opt-s input{accent-color:#435663}
+.bu-opt-t input{accent-color:#c85a0a}
+.bu-opt-e input{accent-color:#6c3483}
+.bu-opt-lbl{font-size:.8rem;font-weight:600;color:var(--nv);display:flex;align-items:center}
+.bu-opt-sub{font-size:.69rem;color:var(--tl);margin-top:2px;line-height:1.5}
+/* SUBMIT */
+.bu-submit-row{display:flex;align-items:center;gap:10px}
+.bu-submit{display:flex;align-items:center;gap:8px;padding:11px 24px;border-radius:var(--r2);border:none;font-family:'Lexend',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .22s;color:white}
+.bu-submit-f{background:linear-gradient(135deg,var(--gd),var(--gm));box-shadow:0 4px 16px rgba(47,107,63,.3)}
+.bu-submit-s{background:linear-gradient(135deg,#2d3447,#435663);box-shadow:0 4px 16px rgba(67,86,99,.28)}
+.bu-submit-t{background:linear-gradient(135deg,#c85a0a,#e96b10);box-shadow:0 4px 16px rgba(200,90,10,.28)}
+.bu-submit-e{background:linear-gradient(135deg,#6c3483,#8e44ad);box-shadow:0 4px 16px rgba(108,52,131,.32)}
+.bu-submit:hover{transform:translateY(-2px)}
+.bu-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.bu-lbl{display:flex;align-items:center;gap:7px}
+.bu-spin-wrap{display:none;align-items:center;gap:7px}
+.bu-submit.loading .bu-lbl{display:none}
+.bu-submit.loading .bu-spin-wrap{display:flex}
+@keyframes buSpin{to{transform:rotate(360deg)}}
+.bu-spin{animation:buSpin .85s linear infinite}
+.bu-clear-btn{display:flex;align-items:center;gap:7px;padding:11px 18px;border-radius:var(--r2);background:transparent;border:1.5px solid rgba(67,86,99,.22);color:var(--tm);font-family:'Lexend',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .18s}
+.bu-clear-btn:hover{border-color:var(--nv);color:var(--nv)}
+/* DRY RUN BANNER */
+.bu-dry-banner{display:flex;align-items:flex-start;gap:12px;padding:13px 18px;border-radius:var(--r2);background:rgba(111,66,193,.06);border:1.5px solid rgba(111,66,193,.22);font-size:.76rem;color:#4c2b8a;line-height:1.65}
+.bu-dry-banner i{color:#6f42c1;font-size:.88rem;flex-shrink:0;margin-top:2px}
+/* SUMMARY STRIP */
+.bu-sstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:14px}
+.bu-sc{border-radius:var(--r2);padding:14px 13px;display:flex;flex-direction:column;gap:4px;border:1.5px solid transparent;position:relative;overflow:hidden}
+.bu-sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.bu-sc-tot{background:rgba(67,86,99,.08);border-color:rgba(67,86,99,.18)}.bu-sc-tot::before{background:var(--nl)}
+.bu-sc-cr{background:rgba(40,167,69,.07);border-color:rgba(40,167,69,.2)}.bu-sc-cr::before{background:#28a745}
+.bu-sc-up{background:rgba(23,162,184,.07);border-color:rgba(23,162,184,.2)}.bu-sc-up::before{background:#17a2b8}
+.bu-sc-er{background:rgba(220,53,69,.07);border-color:rgba(220,53,69,.18)}.bu-sc-er::before{background:#dc3545}
+.bu-sc-sk{background:rgba(111,66,193,.06);border-color:rgba(111,66,193,.16)}.bu-sc-sk::before{background:#6f42c1}
+.bu-scn{font-size:1.85rem;font-weight:800;line-height:1;color:var(--nv)}
+.bu-scl{font-size:.64rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.06em}
+.bu-sc-cr .bu-scn{color:#28a745}.bu-sc-up .bu-scn{color:#17a2b8}.bu-sc-er .bu-scn{color:#dc3545}.bu-sc-sk .bu-scn{color:#6f42c1}
+/* RESULTS TABLE */
+.bu-rtable-card{background:white;border-radius:var(--r3);border:1.5px solid var(--br);box-shadow:var(--sm);overflow:hidden}
+.bu-rhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 20px;background:linear-gradient(90deg,#f4f6f0,#eaede2);border-bottom:1.5px solid var(--br)}
+.bu-rtitle{font-size:.82rem;font-weight:700;color:var(--nv)}
+.bu-rcount{font-size:.65rem;padding:2px 8px;border-radius:20px;background:rgba(67,86,99,.1);color:var(--nl);font-weight:600}
+.bu-rfilter{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.bu-rf{padding:4px 11px;border-radius:20px;font-size:.64rem;font-weight:700;border:1.5px solid var(--br);background:white;color:var(--tm);cursor:pointer;transition:all .17s;font-family:'Lexend',sans-serif}
+.bu-rf:hover{border-color:var(--gd);color:var(--gd)}
+.bu-rf.active{background:var(--nv);color:white;border-color:var(--nv)}
+.bu-rf-cr.active{background:#28a745;border-color:#28a745}
+.bu-rf-up.active{background:#17a2b8;border-color:#17a2b8}
+.bu-rf-er.active{background:#dc3545;border-color:#dc3545}
+.bu-rf-pr.active{background:#6f42c1;border-color:#6f42c1}
+.bu-rscroll{overflow-x:auto;max-height:480px;overflow-y:auto}
+.bu-rscroll::-webkit-scrollbar{width:5px;height:5px}
+.bu-rscroll::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px}
+.bu-rtbl{width:100%;border-collapse:collapse;font-size:.8rem}
+.bu-rtbl thead{background:var(--nv);position:sticky;top:0;z-index:5}
+.bu-rtbl th{padding:10px 14px;color:var(--gl);font-size:.65rem;font-weight:700;text-align:left;white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;border-bottom:2px solid var(--gd)}
+.bu-rtbl td{padding:9px 14px;border-bottom:1px solid rgba(163,176,135,.12);vertical-align:middle}
+.bu-rtbl tbody tr:hover{background:rgba(163,176,135,.05)}
+.bu-rnum{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--tl)}
+.bu-rkey{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;color:var(--nv)}
+.bu-rpill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.62rem;font-weight:700;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.bu-rpill-created{background:rgba(40,167,69,.1);color:#28a745}
+.bu-rpill-updated{background:rgba(23,162,184,.1);color:#17a2b8}
+.bu-rpill-error{background:rgba(220,53,69,.09);color:#dc3545}
+.bu-rpill-preview{background:rgba(111,66,193,.09);color:#6f42c1}
+.bu-rpill-skipped{background:rgba(138,154,170,.08);color:var(--tl)}
+.bu-rmsg{font-size:.73rem;color:var(--tx);line-height:1.45}
+.bu-rmsg-err{color:#dc3545;font-weight:500}
+.bu-rempty{padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--tl);text-align:center}
+.bu-rempty i{font-size:2.8rem;opacity:.12}
+.bu-rempty p{font-size:.88rem;font-weight:600;color:var(--tm)}
+/* MESSAGES */
+#buMsgList{display:flex;flex-direction:column;gap:7px}
+.bu-msg{display:flex;align-items:center;gap:10px;padding:10px 15px;border-radius:var(--r1);font-size:.78rem;line-height:1.5;border:1px solid}
+.bu-success{background:rgba(40,167,69,.08);border-color:rgba(40,167,69,.22);color:#1e6030}
+.bu-error{background:rgba(220,53,69,.07);border-color:rgba(220,53,69,.2);color:#7a1420}
+.bu-warning{background:rgba(255,193,7,.07);border-color:rgba(255,193,7,.22);color:#7a5a00}
+.bu-msg i{flex-shrink:0}
+.bu-msg-x{margin-left:auto;background:none;border:none;color:inherit;opacity:.45;cursor:pointer;font-size:.75rem}
+/* TOAST */
+.ksts-toast{position:fixed;bottom:30px;right:30px;z-index:2000;background:var(--nv);color:var(--cr);padding:14px 20px;border-radius:var(--r2);display:flex;align-items:center;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:.9rem;font-weight:500;animation:slideInRight .4s ease;max-width:460px}
+.ksts-toast.hidden{display:none}
+.ksts-toast i:first-child{color:#28a745;font-size:1.2rem;flex-shrink:0}
+.ksts-toast button{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;margin-left:auto}
+/* PROGRESS CARD */
+.bu-progress-card{background:white;border-radius:var(--r3);border:1.5px solid var(--br);box-shadow:var(--sm);overflow:hidden}
+.bu-progress-head{display:flex;align-items:center;gap:16px;padding:18px 22px;border-bottom:1.5px solid var(--br)}
+.bu-progress-head-f{background:linear-gradient(90deg,rgba(47,107,63,.06),rgba(47,107,63,.02))}
+.bu-progress-head-s{background:linear-gradient(90deg,rgba(67,86,99,.07),rgba(67,86,99,.02))}
+.bu-progress-head-t{background:linear-gradient(90deg,rgba(200,90,10,.07),rgba(200,90,10,.02))}
+.bu-progress-head-e{background:linear-gradient(90deg,rgba(108,52,131,.07),rgba(108,52,131,.02))}
+.bu-progress-icon{width:42px;height:42px;border-radius:50%;background:rgba(47,107,63,.12);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--gd);flex-shrink:0}
+.bu-progress-icon.done{background:rgba(40,167,69,.12);color:#28a745}
+.bu-progress-icon.error{background:rgba(220,53,69,.1);color:#dc3545}
+.bu-progress-icon.rollback{background:rgba(200,90,10,.12);color:#c85a0a}
+.bu-progress-meta{flex:1;min-width:0}
+.bu-progress-title{font-size:.9rem;font-weight:700;color:var(--nv)}
+.bu-progress-sub{font-size:.73rem;color:var(--tl);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bu-progress-counts{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.bpc{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:700}
+.bpc i{font-size:.6rem}
+.bpc-cr{background:rgba(40,167,69,.1);color:#28a745}
+.bpc-up{background:rgba(23,162,184,.1);color:#17a2b8}
+.bpc-er{background:rgba(220,53,69,.09);color:#dc3545}
+.bpc-sk{background:rgba(111,66,193,.08);color:#6f42c1}
+.bu-pbar-track{height:7px;background:rgba(163,176,135,.18);position:relative;overflow:hidden}
+.bu-pbar-fill{height:100%;border-radius:0 4px 4px 0;transition:width .35s ease}
+.bu-pbar-fill-f{background:linear-gradient(90deg,var(--gd),#5cb85c)}
+.bu-pbar-fill-s{background:linear-gradient(90deg,#435663,#6a8fa8)}
+.bu-pbar-fill-t{background:linear-gradient(90deg,#c85a0a,#e96b10)}
+.bu-pbar-fill-e{background:linear-gradient(90deg,#6c3483,#8e44ad)}
+.bu-pbar-fill.error-fill{background:linear-gradient(90deg,#dc3545,#e36e7a)}
+.bu-pbar-labels{display:flex;justify-content:space-between;padding:6px 22px 0;font-size:.68rem;color:var(--tl)}
+.bu-livelog{max-height:200px;overflow-y:auto;padding:10px 22px 14px;display:flex;flex-direction:column;gap:4px;border-top:1px solid rgba(163,176,135,.14);margin-top:10px}
+.bu-livelog::-webkit-scrollbar{width:4px}
+.bu-livelog::-webkit-scrollbar-thumb{background:rgba(163,176,135,.35);border-radius:4px}
+.bu-livelog-empty{font-size:.73rem;color:var(--tl);text-align:center;padding:10px 0}
+.bu-ll-row{display:flex;align-items:baseline;gap:8px;font-size:.72rem;line-height:1.45;animation:llFade .2s ease}
+@keyframes llFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.bu-ll-row .ll-row{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--tl);flex-shrink:0;min-width:38px;text-align:right}
+.bu-ll-row .ll-key{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:600;color:var(--nv);flex-shrink:0}
+.bu-ll-row .ll-msg{color:var(--tm);flex:1}
+.bu-ll-pill{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-size:.58rem;font-weight:700;margin-right:4px;text-transform:uppercase}
+.ll-cr{background:rgba(40,167,69,.1);color:#28a745}
+.ll-up{background:rgba(23,162,184,.1);color:#17a2b8}
+.ll-er{background:rgba(220,53,69,.1);color:#dc3545}
+.ll-pr{background:rgba(111,66,193,.09);color:#6f42c1}
+.ll-sk{background:rgba(138,154,170,.08);color:var(--tl)}
+.bu-ll-phase{font-size:.73rem;font-weight:600;color:var(--gd);padding:4px 0 2px;display:flex;align-items:center;gap:6px}
+.bu-ll-phase i{font-size:.65rem}
+.bu-rollback-warn{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-top:1.5px solid rgba(200,90,10,.25);background:rgba(200,90,10,.06);font-size:.76rem;color:#7a3300;line-height:1.65}
+.bu-rollback-warn i{color:#c85a0a;font-size:1rem;flex-shrink:0;margin-top:2px}
+@media(max-width:1100px){.ksts-sidebar{display:none!important}.ksts-main{padding:16px 16px 36px!important}}
+@media(max-width:860px){.bu-sstrip{grid-template-columns:repeat(3,1fr)}.bu-opts{grid-template-columns:1fr}}
+@media(max-width:640px){.bu-sstrip{grid-template-columns:1fr 1fr}.topbar{flex-direction:column;align-items:flex-start}}
+@keyframes slideInRight{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════ */
+document.getElementById('liveDate').textContent =
+  new Date().toLocaleDateString('en-IN',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+
+function switchTab(tab){
+  document.querySelectorAll('.bu-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.snav-btn[data-tab]').forEach(function(b){b.classList.remove('active');});
+  var p=document.getElementById('tab-'+tab), b=document.querySelector('.snav-btn[data-tab="'+tab+'"]');
+  if(p) p.classList.add('active');
+  if(b) b.classList.add('active');
+  history.replaceState(null,'','#'+tab);
+}
+(function(){
+  {% if active_tab %}switchTab('{{ active_tab }}');
+  {% else %}var h=window.location.hash.replace('#','');
+  if(['farmer','sahayak','transporter','employee'].indexOf(h)>-1) switchTab(h);{% endif %}
+})();
+
+function fmtBytes(b){
+  if(b<1024) return b+'B';
+  if(b<1048576) return (b/1024).toFixed(1)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
+}
+
+/* Option label checked-state toggle */
+function bindOpt(cbId,lblId){
+  var cb=document.getElementById(cbId), lb=document.getElementById(lblId);
+  if(!cb||!lb) return;
+  var upd=function(){lb.classList.toggle('checked',cb.checked);};
+  cb.addEventListener('change',upd); upd();
+}
+['farmer','sahayak','transporter','employee'].forEach(function(t){
+  bindOpt('upd-'+t,'lbl-upd-'+t);
+  bindOpt('dry-'+t,'lbl-dry-'+t);
+});
+
+/* ── Filter function for all result tables ── */
+function filterResults(type, btn, f){
+  btn.closest('.bu-rfilter').querySelectorAll('.bu-rf').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  document.querySelectorAll('#'+type+'ResultsBody .bu-rrow').forEach(function(row){
+    row.style.display=(f==='all'||row.dataset.status===f)?'':'none';
+  });
+}
+
+/* ── Shared escape helper ── */
+function _esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _pillHtml(status){
+  var cls={created:'ll-cr',updated:'ll-up',error:'ll-er',preview:'ll-pr',skipped:'ll-sk'}[status]||'ll-sk';
+  var ico={created:'plus-circle',updated:'sync-alt',error:'exclamation-circle',preview:'eye',skipped:'minus'}[status]||'minus';
+  return '<span class="bu-ll-pill '+cls+'"><i class="fas fa-'+ico+'"></i>'+status+'</span>';
+}
+
+/* ── Toast helper ── */
+function showBuToast(msg, success){
+  var t=document.getElementById('buToast'), tm=document.getElementById('buToastMsg'), ic=t.querySelector('i');
+  tm.textContent=msg; ic.className=success?'fas fa-check-circle':'fas fa-exclamation-circle';
+  ic.style.color=success?'#28a745':'#dc3545'; t.classList.remove('hidden');
+  setTimeout(function(){t.classList.add('hidden');},5000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   GENERIC SSE UPLOAD ENGINE
+   Handles farmer, sahayak, transporter, and employee.
+   Each tab gets its own DOM shortcut map (P).
+═══════════════════════════════════════════════════════ */
+
+/* Build a DOM-shortcut map for a given tab type */
+function _makeP(type, pfx) {
+  return {
+    card:          document.getElementById(type+'ProgressCard'),
+    icon:          document.getElementById(type+'ProgressIcon'),
+    title:         document.getElementById(type+'ProgressTitle'),
+    sub:           document.getElementById(type+'ProgressSub'),
+    pbarFill:      document.getElementById(type+'PbarFill'),
+    pbarDone:      document.getElementById(type+'PbarDone'),
+    pbarPct:       document.getElementById(type+'PbarPct'),
+    livelog:       document.getElementById(type+'LiveLog'),
+    rollbackWarn:  document.getElementById(type+'RollbackWarn'),
+    rollbackRsn:   document.getElementById(type+'RollbackReason'),
+    pcCreated:     document.getElementById(pfx+'pc-created'),
+    pcUpdated:     document.getElementById(pfx+'pc-updated'),
+    pcErrors:      document.getElementById(pfx+'pc-errors'),
+    pcSkipped:     document.getElementById(pfx+'pc-skipped'),
+    results:       document.getElementById(type+'Results'),
+    dryBanner:     document.getElementById(type+'DryBanner'),
+    sTotal:        document.getElementById(pfx+'s-total'),
+    sCreated:      document.getElementById(pfx+'s-created'),
+    sUpdated:      document.getElementById(pfx+'s-updated'),
+    sErrors:       document.getElementById(pfx+'s-errors'),
+    sSkipped:      document.getElementById(pfx+'s-skipped'),
+    rcount:        document.getElementById(type+'Rcount'),
+    tbody:         document.getElementById(type+'ResultsBody'),
+    rempty:        document.getElementById(type+'ResultsEmpty'),
+    submitBtn:     document.getElementById(type+'SubmitBtn'),
+  };
+}
+
+var _PANELS = {
+  farmer:      _makeP('farmer',      'f'),
+  sahayak:     _makeP('sahayak',     's'),
+  transporter: _makeP('transporter', 't'),
+  employee:    _makeP('employee',    'e'),
+};
+
+var _liveCount = {};
+['farmer','sahayak','transporter','employee'].forEach(function(t){ _liveCount[t]={created:0,updated:0,errors:0,skipped:0}; });
+
+function _resetLiveCount(type){
+  _liveCount[type]={created:0,updated:0,errors:0,skipped:0};
+  var P=_PANELS[type];
+  P.pcCreated.textContent='0'; P.pcUpdated.textContent='0';
+  P.pcErrors.textContent='0';  P.pcSkipped.textContent='0';
+}
+
+function _bumpCount(type, status){
+  var P=_PANELS[type]; var c=_liveCount[type];
+  if(status==='created'){ c.created++; P.pcCreated.textContent=c.created; }
+  else if(status==='updated'){ c.updated++; P.pcUpdated.textContent=c.updated; }
+  else if(status==='error'){   c.errors++;  P.pcErrors.textContent=c.errors; }
+  else if(status==='skipped'){ c.skipped++; P.pcSkipped.textContent=c.skipped; }
+}
+
+function _resetProgress(type){
+  var P=_PANELS[type];
+  P.card.style.display='block';
+  P.icon.className='bu-progress-icon';
+  P.icon.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';
+  P.title.textContent='Processing rows…';
+  P.sub.textContent='Preparing import';
+  P.pbarFill.style.width='0%';
+  P.pbarFill.classList.remove('error-fill');
+  P.pbarDone.textContent='0 / 0 rows';
+  P.pbarPct.textContent='0%';
+  P.livelog.innerHTML='<div class="bu-livelog-empty">Waiting for rows…</div>';
+  P.rollbackWarn.style.display='none';
+  P.results.style.display='none';
+  _resetLiveCount(type);
+}
+
+function _logRow(type, evt){
+  var P=_PANELS[type];
+  var empty=P.livelog.querySelector('.bu-livelog-empty');
+  if(empty) empty.remove();
+
+  if(evt.type==='phase'){
+    var ph=document.createElement('div');
+    ph.className='bu-ll-phase';
+    ph.innerHTML='<i class="fas fa-'+(evt.phase==='write'?'database':evt.phase==='cache'?'bolt':'check-circle')+'"></i>'+_esc(evt.message);
+    P.livelog.appendChild(ph);
+  } else if(evt.type==='abort'){
+    var ab=document.createElement('div');
+    ab.className='bu-ll-phase'; ab.style.color='#dc3545';
+    ab.innerHTML='<i class="fas fa-ban"></i>'+_esc(evt.message);
+    P.livelog.appendChild(ab);
+  } else if(evt.row!==undefined){
+    var pill=_pillHtml(evt.status);
+    var row=document.createElement('div');
+    row.className='bu-ll-row';
+    row.innerHTML='<span class="ll-row">#'+evt.row+'</span>'+
+      '<span class="ll-key">'+_esc(String(evt.key||'—'))+'</span>'+
+      pill+'<span class="ll-msg">'+_esc(evt.message||'')+'</span>';
+    P.livelog.appendChild(row);
+    _bumpCount(type, evt.status);
+    var rows=P.livelog.querySelectorAll('.bu-ll-row');
+    if(rows.length>60) rows[0].remove();
+  }
+  P.livelog.scrollTop=P.livelog.scrollHeight;
+}
+
+function _renderResults(type, summary, results, isDryRun){
+  var P=_PANELS[type];
+  P.dryBanner.style.display=isDryRun?'flex':'none';
+  P.sTotal.textContent=summary.total||0;
+  P.sCreated.textContent=summary.created||0;
+  P.sUpdated.textContent=summary.updated||0;
+  P.sErrors.textContent=summary.errors||0;
+  P.sSkipped.textContent=summary.skipped||0;
+
+  P.tbody.innerHTML='';
+  if(!results||results.length===0){
+    P.rempty.style.display='flex';
+    var scroll=P.tbody.closest('.bu-rscroll');
+    if(scroll) scroll.style.display='none';
+  } else {
+    P.rempty.style.display='none';
+    var scroll=P.tbody.closest('.bu-rscroll');
+    if(scroll) scroll.style.display='';
+    P.rcount.textContent=results.length+' rows';
+    var sIcon={created:'plus-circle',updated:'sync-alt',error:'exclamation-circle',preview:'eye',skipped:'minus'};
+    results.forEach(function(r){
+      var tr=document.createElement('tr');
+      tr.className='bu-rrow'; tr.dataset.status=r.status;
+      var ico=sIcon[r.status]||'minus';
+      var errCls=r.status==='error'?' bu-rmsg-err':'';
+      tr.innerHTML='<td class="bu-rnum">'+_esc(String(r.row))+'</td>'+
+        '<td class="bu-rkey">'+_esc(String(r.key))+'</td>'+
+        '<td><span class="bu-rpill bu-rpill-'+r.status+'"><i class="fas fa-'+ico+'"></i> '+_esc(r.status)+'</span></td>'+
+        '<td class="bu-rmsg'+errCls+'">'+_esc(r.message||'')+'</td>';
+      P.tbody.appendChild(tr);
+    });
+  }
+  P.results.style.display='block';
+  setTimeout(function(){P.results.scrollIntoView({behavior:'smooth',block:'start'});},120);
+}
+
+/* ── Drop zone init for all four tabs ── */
+function _initDZ(type){
+  var dz=document.getElementById('dz-'+type);
+  var fi=document.getElementById('fi-'+type);
+  var sel=document.getElementById('dzSel-'+type);
+  var fn=document.getElementById('dzFn-'+type);
+  if(!dz||!fi) return;
+  fi.addEventListener('change',function(){
+    if(this.files&&this.files[0]){
+      fn.textContent=this.files[0].name+' ('+fmtBytes(this.files[0].size)+')';
+      sel.classList.add('visible'); dz.classList.add('has-file');
+    }
+  });
+  dz.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('drag-over');});
+  dz.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
+  dz.addEventListener('drop',function(e){
+    e.preventDefault(); this.classList.remove('drag-over');
+    var f=e.dataTransfer.files[0];
+    if(f&&f.name.toLowerCase().endsWith('.xlsx')){
+      var dt=new DataTransfer(); dt.items.add(f); fi.files=dt.files;
+      fn.textContent=f.name+' ('+fmtBytes(f.size)+')';
+      sel.classList.add('visible'); dz.classList.add('has-file');
+    } else { alert('Please drop a .xlsx file.'); }
+  });
+}
+['farmer','sahayak','transporter','employee'].forEach(_initDZ);
+
+function resetUpload(type){
+  var dz=document.getElementById('dz-'+type);
+  var sel=document.getElementById('dzSel-'+type);
+  var fn=document.getElementById('dzFn-'+type);
+  var fi=document.getElementById('fi-'+type);
+  var P=_PANELS[type];
+  if(dz)  dz.classList.remove('has-file','drag-over');
+  if(sel) sel.classList.remove('visible');
+  if(fn)  fn.textContent='No file chosen';
+  if(fi)  fi.value='';
+  if(P.card) P.card.style.display='none';
+  if(P.results) P.results.style.display='none';
+  P.submitBtn.classList.remove('loading');
+  P.submitBtn.disabled=false;
+}
+
+/* ── Intercept all four forms ── */
+['farmer','sahayak','transporter','employee'].forEach(function(type){
+  document.getElementById('form-'+type).addEventListener('submit', function(e){
+    e.preventDefault();
+
+    var fi=document.getElementById('fi-'+type);
+    if(!fi.files||!fi.files[0]){ alert('Please choose an .xlsx file before uploading.'); return; }
+    if(!fi.files[0].name.toLowerCase().endsWith('.xlsx')){ alert('Only .xlsx files are accepted.'); return; }
+
+    var jobId=type[0]+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
+    var P=_PANELS[type];
+    var isDryRun=document.getElementById('dry-'+type).checked;
+
+    P.submitBtn.classList.add('loading');
+    P.submitBtn.disabled=true;
+    _resetProgress(type);
+    P.card.scrollIntoView({behavior:'smooth',block:'start'});
+
+    var fd=new FormData();
+    fd.append('upload_type', type);
+    fd.append('update_existing', document.getElementById('upd-'+type).checked?'on':'');
+    fd.append('dry_run', isDryRun?'on':'');
+    fd.append('excel_file', fi.files[0]);
+    fd.append('job_id', jobId);
+    var csrf=(document.querySelector('[name=csrfmiddlewaretoken]')||{}).value||'';
+    fd.append('csrfmiddlewaretoken', csrf);
+
+    /* Open SSE stream */
+    var sseUrl='{% url "bulk_upload_progress" %}?job_id='+encodeURIComponent(jobId);
+    var evtSrc=new EventSource(sseUrl);
+
+    evtSrc.onmessage=function(ev){
+      var data; try{data=JSON.parse(ev.data);}catch(err){return;}
+      if(!data||!data.type) return;
+
+      if(data.type==='progress'){
+        var pct=data.pct||0;
+        P.pbarFill.style.width=pct+'%';
+        P.pbarDone.textContent=(data.processed||0)+' / '+(data.total||0)+' rows';
+        P.pbarPct.textContent=pct+'%';
+        P.sub.textContent=data.message||('Row '+data.processed+'…');
+
+      } else if(data.type==='phase'){
+        _logRow(type, data);
+        var phaseLabels={
+          validate: 'Validating rows…',
+          write:    'Writing to database…',
+          cache:    'Loading cache…',
+        };
+        P.title.textContent=phaseLabels[data.phase]||'Processing…';
+        P.sub.textContent=data.message||'';
+
+      } else if(data.type==='abort'){
+        _logRow(type, data);
+        P.pbarFill.classList.add('error-fill'); P.pbarFill.style.width='100%';
+        P.title.textContent='Import aborted — validation failed';
+        P.sub.textContent='No records were saved';
+        P.icon.className='bu-progress-icon error';
+        P.icon.innerHTML='<i class="fas fa-ban"></i>';
+
+      } else if(data.type==='rollback'){
+        P.rollbackWarn.style.display='flex';
+        P.rollbackRsn.textContent=data.message||'';
+        P.pbarFill.classList.add('error-fill'); P.pbarFill.style.width='100%';
+        P.title.textContent='Import rolled back';
+        P.sub.textContent='Nothing was saved to the database';
+        P.icon.className='bu-progress-icon rollback';
+        P.icon.innerHTML='<i class="fas fa-undo-alt"></i>';
+
+      } else if(data.type==='row'){
+        _logRow(type, data);
+
+      } else if(data.type==='done'){
+        evtSrc.close();
+        var s=data.summary||{};
+        var hasFatal=(s.errors>0&&s.created===0&&s.updated===0);
+        if(hasFatal) P.pbarFill.classList.add('error-fill');
+        P.pbarFill.style.width='100%';
+        P.pbarDone.textContent=(s.total||0)+' / '+(s.total||0)+' rows';
+        P.pbarPct.textContent='100%';
+        if(hasFatal){
+          P.icon.className='bu-progress-icon error';
+          P.icon.innerHTML='<i class="fas fa-exclamation-circle"></i>';
+          P.title.textContent='Import completed with errors';
+        } else {
+          P.icon.className='bu-progress-icon done';
+          P.icon.innerHTML='<i class="fas fa-check-circle"></i>';
+          P.title.textContent=isDryRun?'Dry run complete — nothing saved':'Import complete';
+        }
+        P.sub.textContent='';
+        _renderResults(type, s, data.results||[], isDryRun);
+        var msg=isDryRun
+          ?'Dry run: '+(s.total||0)+' rows previewed'
+          :(s.total||0)+' rows — '+(s.created||0)+' created, '+(s.updated||0)+' updated, '+(s.errors||0)+' errors';
+        showBuToast(msg, !hasFatal);
+        P.submitBtn.classList.remove('loading');
+        P.submitBtn.disabled=false;
+      }
+    };
+
+    evtSrc.onerror=function(){
+      evtSrc.close();
+      P.icon.className='bu-progress-icon error';
+      P.icon.innerHTML='<i class="fas fa-exclamation-triangle"></i>';
+      P.title.textContent='Connection error';
+      P.sub.textContent='The progress stream was interrupted. Check the server logs.';
+      P.pbarFill.classList.add('error-fill');
+      P.submitBtn.classList.remove('loading');
+      P.submitBtn.disabled=false;
+    };
+
+    /* Fire XHR */
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST','{% url "bulk_upload" %}',true);
+    xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
+    xhr.onload=function(){
+      if(xhr.status!==200){
+        P.icon.className='bu-progress-icon error';
+        P.icon.innerHTML='<i class="fas fa-exclamation-circle"></i>';
+        P.title.textContent='Upload failed (HTTP '+xhr.status+')';
+        P.sub.textContent='Please try again or contact IT support.';
+        evtSrc.close();
+        P.submitBtn.classList.remove('loading');
+        P.submitBtn.disabled=false;
+      }
+    };
+    xhr.onerror=function(){
+      P.icon.className='bu-progress-icon error';
+      P.icon.innerHTML='<i class="fas fa-exclamation-triangle"></i>';
+      P.title.textContent='Network error — upload failed';
+      evtSrc.close();
+      P.submitBtn.classList.remove('loading');
+      P.submitBtn.disabled=false;
+    };
+    xhr.send(fd);
+  });
+});
+</script>
+
+{% endblock %}

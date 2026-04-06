@@ -1,0 +1,626 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Indent Easy{% endblock %}</title>
+    
+    <!-- Cleaned up CSS imports -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-32x32.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon-32x32.png' %}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Single Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">    
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Lexend', sans-serif !important;
+      }
+
+      html {
+        height: 100%;
+      }
+
+      body {
+        background: white;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        margin: 0;
+        padding: 0;
+        zoom: 75%;
+      }
+
+      /* Ensure Font Awesome icons display properly */
+      .fas, .far, .fab, .fa {
+        font-family: 'Font Awesome 6 Free' !important;
+        font-weight: 900;
+      }
+
+      /* Modern Navigation */
+      .navbar {
+        background: white;
+        padding: 1rem 2rem;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 90px;
+      }
+
+      /* Logo Container */
+      .logo-container {
+        background: white;
+        border-radius: 12px;
+        padding: 8px 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+      }
+
+      .logo-container:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .logo-container img {
+        max-height: 50px;
+        display: block;
+      }
+
+      /* Portal Title */
+      .portal-title {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #313647;
+        letter-spacing: 2px;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      /* Logout Button */
+      .logout-btn-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .welcome-message {
+        color: #313647;
+        font-weight: 500;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .logout-btn {
+        background: linear-gradient(135deg, #EA5B6F 0%, #D94A5E 100%) !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        border-radius: 25px !important;
+        transition: all 0.3s ease !important;
+        font-size: 0.9rem !important;
+        box-shadow: 0 4px 15px rgba(234, 91, 111, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none !important;
+      }
+
+      .logout-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(234, 91, 111, 0.4) !important;
+        background: linear-gradient(135deg, #D94A5E 0%, #C8394D 100%) !important;
+        color: white !important;
+      }
+
+      /* Chat Widget */
+      .chat-logo {
+        position: fixed;
+        bottom: 85px;
+        right: 25px;
+        z-index: 9999;
+        cursor: pointer;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #A3B087 0%, #8a9b73 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 25px rgba(163, 176, 135, 0.4);
+        transition: all 0.3s ease;
+      }
+
+      .chat-logo:hover {
+        transform: scale(1.1) rotate(5deg);
+        box-shadow: 0 12px 35px rgba(163, 176, 135, 0.5);
+      }
+
+      .chat-logo img {
+        width: 30px;
+        height: 30px;
+      }
+
+      /* Chat Card */
+      .chat-card {
+        display: none;
+        position: fixed;
+        bottom: 160px;
+        right: 25px;
+        width: 350px;
+        max-height: 500px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 15px 50px rgba(49, 54, 71, 0.3);
+        padding: 0;
+        z-index: 10000;
+        overflow: hidden;
+        border: 2px solid rgba(163, 176, 135, 0.2);
+      }
+
+      .chat-card-header {
+        background: linear-gradient(135deg, #313647 0%, #435663 100%);
+        color: #FFF8D4;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .chat-card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+
+      .close-btn {
+        background: rgba(255, 248, 212, 0.2);
+        border: none;
+        color: #FFF8D4;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      .close-btn:hover {
+        background: rgba(255, 248, 212, 0.3);
+        transform: rotate(90deg);
+      }
+
+      .chat-card-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        max-height: 380px;
+        overflow-y: auto;
+      }
+
+      .message-section {
+        flex-grow: 1;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: rgba(163, 176, 135, 0.05);
+        border-radius: 10px;
+        min-height: 100px;
+      }
+
+      .form-group {
+        margin-bottom: 0;
+      }
+
+      .form-group label {
+        color: #313647;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .form-control {
+        border: 2px solid rgba(67, 86, 99, 0.2);
+        border-radius: 10px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 248, 212, 0.3);
+      }
+
+      .form-control:focus {
+        border-color: #A3B087;
+        box-shadow: 0 0 0 3px rgba(163, 176, 135, 0.1);
+        outline: none;
+        background: white;
+      }
+
+      .message-input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid rgba(67, 86, 99, 0.2);
+        border-radius: 10px;
+        font-size: 0.9rem;
+        resize: vertical;
+        min-height: 80px;
+        transition: all 0.3s ease;
+        background: rgba(255, 248, 212, 0.3);
+      }
+
+      .message-input:focus {
+        border-color: #A3B087;
+        box-shadow: 0 0 0 3px rgba(163, 176, 135, 0.1);
+        outline: none;
+        background: white;
+      }
+
+      .send-btn {
+        background: linear-gradient(135deg, #A3B087 0%, #8a9b73 100%);
+        border: none;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        width: 100%;
+        margin-left: 0 !important;
+        box-shadow: 0 4px 15px rgba(163, 176, 135, 0.3);
+      }
+
+      .send-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(163, 176, 135, 0.4);
+      }
+
+      /* Content wrapper - UPDATED for proper footer placement */
+      .content-wrapper {
+        padding-top: 90px;
+        flex: 1 0 auto;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: calc(100vh - 160px); /* Ensure minimum height for footer */
+      }
+
+      /* Footer - UPDATED for sticky bottom */
+      .developer-footer {
+        /* background: #f8f9fa;
+        border-top: 1px solid #e9ecef; */
+        padding: 15px 0;
+        text-align: center;
+        width: 100%;
+        flex-shrink: 0;
+        margin-top: auto; /* Push footer to bottom */
+        position: relative;
+        z-index: 100;
+      }
+
+      .developer-credit {
+        color: #6c757d;
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 1px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .developer-name {
+        font-weight: 600;
+        color: #313647;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+      }
+
+      /* Ensure body takes full height and footer stays at bottom */
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        zoom: 70%;
+      }
+
+      /* Main content area should grow to push footer down */
+      .content-wrapper {
+        flex: 1;
+      }
+
+      /* Ensure all pages have proper structure */
+      main.main-content {
+        flex: 1;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .navbar {
+          padding: 1rem;
+          height: 80px;
+        }
+
+        .logo-container img {
+          max-height: 40px;
+        }
+
+        .portal-title {
+          font-size: 1.2rem;
+          letter-spacing: 1px;
+        }
+
+        .welcome-message {
+          display: none;
+        }
+
+        .logout-btn {
+          padding: 0.5rem 1rem !important;
+          font-size: 0.85rem !important;
+        }
+
+        .chat-card {
+          width: calc(100vw - 40px);
+          right: 20px;
+          bottom: 150px;
+        }
+
+        .chat-logo {
+          width: 55px;
+          height: 55px;
+          bottom: 80px;
+          right: 20px;
+        }
+
+        .chat-logo img {
+          width: 26px;
+          height: 26px;
+        }
+
+        .content-wrapper {
+          padding-top: 80px;
+          min-height: calc(100vh - 140px);
+        }
+      }
+
+      /* Extra small devices */
+      @media (max-width: 480px) {
+        .developer-credit {
+          font-size: 0.8rem;
+        }
+        
+        .developer-name {
+          font-size: 0.85rem;
+        }
+      }
+    </style>
+  </head>
+  
+  <!-- Update the body tag in base.html -->
+<body{% if user.is_authenticated %} class="authenticated"{% else %} class="not-authenticated"{% endif %}>
+    <!-- Modern Navigation -->
+    <nav class="navbar">
+      <div class="logo-container">
+        <a href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}" style="text-decoration: none;">
+          <img src="{% static 'images/shwetdharalogo.png' %}" alt="Logo" />
+        </a>
+      </div>
+      
+      <!-- Portal Title -->
+      <div class="portal-title">
+        KSTS SYSTEM
+      </div>
+      
+      <!-- In the User Controls section of base.html -->
+{% if user.is_authenticated %}
+<div class="logout-btn-container">
+  <span class="welcome-message">
+    <i class="fas fa-user-circle"></i>
+    Welcome, {{ user.get_full_name|default:user.first_name|default:user.email }}
+  </span>
+  <form method="post" action="{% url 'logout' %}" style="display: inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn logout-btn">
+      <i class="fas fa-sign-out-alt"></i>Log Out
+    </button>
+  </form>
+</div>
+{% else %}
+<div style="width: 150px;"></div>
+{% endif %}
+    </nav>
+
+    <!-- Content Area -->
+    <div class="content-wrapper">
+      {% block content %} {% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="developer-footer">
+      <div class="developer-credit">
+        DEVELOPED BY <span class="developer-name">SHIVAM KUMAR CHAUBEY</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+    <script>
+      // Inactivity Timer - Fixed version
+      let inactivityTime = function () {
+        // Don't run on password reset pages or login page
+        const currentPath = window.location.pathname;
+        const excludedPaths = [
+          '/reset-password',
+          '/login'
+        ];
+
+        // Check if current path should be excluded
+        const shouldExclude = excludedPaths.some(path => currentPath.includes(path));
+        if (shouldExclude) {
+          console.log('Inactivity timer disabled for this page:', currentPath);
+          return;
+        }
+
+        let timer;
+        const logoutUrl = "{% url 'login' %}";
+
+        const resetTimer = function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            // Only redirect if user is authenticated
+            if (document.body.classList.contains('authenticated')) {
+              window.location.href = logoutUrl;
+            }
+          }, 1800000); // 30 minutes
+        };
+
+        window.onload = resetTimer;
+        document.onmousemove = resetTimer;
+        document.onkeypress = resetTimer;
+        document.ontouchstart = resetTimer;
+      };
+
+      inactivityTime();
+
+      // Chat functionality
+      function toggleChatCard() {
+        const chatCard = document.getElementById("chatCard");
+        const isChatVisible = chatCard.style.display === "block";
+        chatCard.style.display = isChatVisible ? "none" : "block";
+        localStorage.setItem("isChatOpen", !isChatVisible);
+      }
+
+      function closeChatCard() {
+        const chatCard = document.getElementById("chatCard");
+        chatCard.style.display = "none";
+        localStorage.setItem("isChatOpen", "false");
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const isChatOpen = localStorage.getItem("isChatOpen") === "true";
+        const chatCard = document.getElementById("chatCard");
+        if (isChatOpen && chatCard) {
+          chatCard.style.display = "block";
+        }
+      });
+      
+      // Add this script to base.html
+      document.addEventListener('DOMContentLoaded', function() {
+        // Check if user is authenticated
+        const isAuthenticated = document.body.classList.contains('authenticated');
+        
+        if (!isAuthenticated) {
+          // If not authenticated and not on login page, redirect to login
+          const currentPath = window.location.pathname;
+          const loginPath = "{% url 'login' %}";
+          const resetPasswordPath = "{% url 'password_reset' %}";
+          
+          // Don't redirect if we're on login or password reset pages
+          if (currentPath !== loginPath && 
+              !currentPath.includes('/login') && 
+              currentPath !== resetPasswordPath &&
+              !currentPath.includes('/reset-password/')) {
+            window.location.href = loginPath;
+          }
+        }
+      });
+
+      function sendMessage() {
+        const message = document.getElementById("messageInput").value;
+        const recipient = document.getElementById("userSelect").value;
+
+        if (message.trim() === "") {
+          alert("Please type a message");
+          return;
+        }
+
+        $.ajax({
+          url: "{% url 'send_message' %}",
+          method: "POST",
+          data: {
+            message: message,
+            recipient: recipient,
+            csrfmiddlewaretoken: "{{ csrf_token }}",
+          },
+          success: function (response) {
+            if (response.status === "success") {
+              alert(response.message);
+              document.getElementById("messageInput").value = "";
+            } else {
+              alert("Failed to send the message");
+            }
+          },
+          error: function () {
+            alert("Error in sending message");
+          },
+        });
+      }
+
+      // Ensure footer stays at bottom on page load and resize
+      function adjustFooterPosition() {
+        const contentWrapper = document.querySelector('.content-wrapper');
+        const footer = document.querySelector('.developer-footer');
+        const body = document.body;
+        
+        // Calculate if content is shorter than viewport
+        const contentHeight = contentWrapper.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const navbarHeight = 90; // Fixed navbar height
+        
+        if (contentHeight + navbarHeight < viewportHeight) {
+          body.style.minHeight = '100vh';
+          footer.style.marginTop = 'auto';
+        } else {
+          footer.style.marginTop = '0';
+        }
+      }
+
+      // Run on load and resize
+      window.addEventListener('load', adjustFooterPosition);
+      window.addEventListener('resize', adjustFooterPosition);
+      // Also run when content changes (for dynamic content)
+      new MutationObserver(adjustFooterPosition).observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    </script>
+  </body>
+</html>
