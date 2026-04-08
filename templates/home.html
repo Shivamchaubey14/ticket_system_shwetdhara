@@ -37,6 +37,11 @@
         <button class="snav-btn" data-target="farmer-lookup"><span class="snav-icon"><i class="fas fa-search"></i></span><span class="snav-text">Farmer Lookup</span><span class="snav-arrow"><i class="fas fa-chevron-right"></i></span></button>
         <button class="snav-btn" data-target="reports" id="reportsBtn"><span class="snav-icon"><i class="fas fa-chart-bar"></i></span><span class="snav-text">Reports</span><span class="snav-arrow"><i class="fas fa-chevron-right"></i></span></button>
         <button class="snav-btn" data-target="notifications"><span class="snav-icon"><i class="fas fa-bell"></i></span><span class="snav-text">Notifications</span><span class="snav-pill urgent">3</span></button>
+        <button class="snav-btn" data-target="org-hierarchy">
+          <span class="snav-icon"><i class="fas fa-sitemap"></i></span>
+          <span class="snav-text">Org Hierarchy</span>
+          <span class="snav-arrow"><i class="fas fa-chevron-right"></i></span>
+        </button>
       </nav>
       <div class="sidebar-help">
         <i class="fas fa-info-circle"></i>
@@ -367,6 +372,136 @@
         </div>
       </div>
     </section>
+    <!-- ══ ORG HIERARCHY PANEL ══ -->
+<section class="panel hidden" id="panel-org-hierarchy">
+  <div class="panel-head">
+    <span class="panel-head-icon" style="background:rgba(47,107,63,.2)"><i class="fas fa-sitemap"></i></span>
+    <div><h2 class="panel-title">Organisation Hierarchy</h2><p class="panel-sub">Employee reporting structure &middot; Shwetdhara Dairy</p></div>
+    <span class="panel-badge new">Live</span>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="oh-toolbar">
+    <div class="oh-search-bar">
+      <i class="fas fa-search"></i>
+      <input type="text" id="ohSearch" autocomplete="off" placeholder="Search by name, code, dept, location…"/>
+    </div>
+    <div class="oh-filter-group" id="ohDeptFilters">
+      <span class="oh-filter-lbl">Dept:</span>
+      <button class="oh-filter-btn active" data-dept="">All</button>
+      <!-- dynamic dept buttons injected here -->
+    </div>
+    <div class="oh-view-toggle">
+      <button class="oh-view-btn active" id="ohVTree"><i class="fas fa-sitemap"></i> Tree</button>
+      <button class="oh-view-btn" id="ohVTable"><i class="fas fa-table"></i> Table</button>
+    </div>
+  </div>
+
+  <!-- LOCATION FILTER ROW -->
+  <div class="oh-location-row" id="ohLocationRow" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 20px;background:#f5f7f3;border-bottom:1.5px solid var(--br);align-items:center">
+    <span style="font-size:.72rem;font-weight:600;color:var(--tl)">Location:</span>
+    <button class="oh-loc-btn active" data-loc="">All Locations</button>
+    <!-- dynamic location buttons injected here -->
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="oh-stats-row">
+    <div class="oh-stat"><span class="oh-stat-num" id="oh-stat-total">—</span><span class="oh-stat-lbl">Employees</span></div>
+    <div class="oh-stat"><span class="oh-stat-num" id="oh-stat-depts">—</span><span class="oh-stat-lbl">Departments</span></div>
+    <div class="oh-stat"><span class="oh-stat-num" id="oh-stat-mgrs">—</span><span class="oh-stat-lbl">Managers</span></div>
+    <div class="oh-stat"><span class="oh-stat-num" id="oh-stat-locs">—</span><span class="oh-stat-lbl">Locations</span></div>
+    <div class="oh-stat"><span class="oh-stat-num" id="oh-stat-active">—</span><span class="oh-stat-lbl">Active</span></div>
+  </div>
+
+  <!-- BREADCRUMB -->
+  <div class="oh-breadcrumb" id="ohBreadcrumb">
+    <span class="oh-bc-home" id="ohBcHome"><i class="fas fa-home"></i> Organisation</span>
+    <span class="oh-bc-sep hidden">›</span>
+    <span class="oh-bc-node hidden"></span>
+  </div>
+
+  <!-- BODY — tree only (no side detail panel; detail goes in modal) -->
+  <div class="oh-body" style="display:block">
+    <div class="oh-tree-wrap" id="ohTreeView" style="overflow-x:auto;overflow-y:auto;max-height:65vh;padding:20px 24px">
+      <div id="ohTreeContainer">
+        <div class="oh-loading"><i class="fas fa-spinner fa-spin"></i> Loading hierarchy…</div>
+      </div>
+    </div>
+    <div class="oh-tree-wrap hidden" id="ohTableView" style="overflow-x:auto;max-height:65vh">
+      <table class="ksts-table" id="ohEmpTable">
+        <thead>
+          <tr>
+            <th>Employee</th><th>Title</th><th>Department</th>
+            <th>Reports To</th><th>Location</th><th>Type</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="ohEmpTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="oh-legend" id="ohLegend">
+    <span style="font-weight:600;color:var(--nv);font-size:.72rem">Legend:</span>
+    <!-- injected dynamically -->
+  </div>
+</section>
+
+<!-- ══ EMPLOYEE DETAIL MODAL ══ -->
+<div class="ksts-modal-overlay hidden" id="empDetailModal">
+  <div class="ksts-modal" style="max-width:680px">
+    <div class="kmodal-head" id="empModalHead">
+      <div class="kmodal-head-left">
+        <div class="kmodal-icon" id="empModalAv" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:white"></div>
+        <div>
+          <div class="kmodal-id" id="empModalName">—</div>
+          <div class="kmodal-subtitle" id="empModalTitle">—</div>
+        </div>
+      </div>
+      <div class="kmodal-head-right">
+        <span class="status-chip" id="empModalStatus">—</span>
+        <button class="kmodal-close" id="closeEmpModal"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="kmodal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px">
+      <!-- Left -->
+      <div>
+        <div class="km-section">
+          <div class="km-section-head"><i class="fas fa-id-card"></i> Identity</div>
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Employee Code</span><span class="oh-dp-val hl" id="em_code">—</span></div>
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Department</span><span class="oh-dp-val" id="em_dept">—</span></div>
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Employee Type</span><span class="oh-dp-val" id="em_type">—</span></div>
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Work Location</span><span class="oh-dp-val hl" id="em_loc">—</span></div>
+          </div>
+        </div>
+        <div class="km-section km-section-mt">
+          <div class="km-section-head"><i class="fas fa-phone"></i> Contact</div>
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Email</span><span class="oh-dp-val" id="em_email" style="font-size:.72rem;word-break:break-all">—</span></div>
+            <div class="oh-dp-row"><span class="oh-dp-lbl">Mobile</span><span class="oh-dp-val" id="em_mobile">—</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Right -->
+      <div>
+        <div class="km-section">
+          <div class="km-section-head"><i class="fas fa-sitemap"></i> Reporting Chain</div>
+          <div style="padding:12px 14px" id="em_chain"></div>
+        </div>
+        <div class="km-section km-section-mt">
+          <div class="km-section-head"><i class="fas fa-users"></i> Direct Reports</div>
+          <div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px" id="em_reports">
+            <span style="font-size:.76rem;color:var(--tl);font-style:italic">No direct reports</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kmodal-foot">
+      <button class="btn-ghost" id="closeEmpModal2"><i class="fas fa-times"></i> Close</button>
+    </div>
+  </div>
+</div>
   </main>
 </div>
 
@@ -1943,6 +2078,112 @@ body{font-family:'Lexend',sans-serif;background:#f2f4f0;color:var(--tx);zoom:75%
   .summary-grid{grid-template-columns:1fr 1fr}.sc-badge{display:none}
   body{zoom:100%}
 }
+/* ══ ORG HIERARCHY PANEL ══ */
+/* ── Horizontal multi-column tree ── */
+.oh-forest{display:flex;flex-direction:row;gap:32px;align-items:flex-start;flex-wrap:wrap;padding-bottom:16px}
+.oh-tree-col{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.oh-tree-col-head{font-size:.65rem;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.1em;padding:4px 10px;background:rgba(47,107,63,.06);border-radius:6px;border:1px solid rgba(47,107,63,.15);margin-bottom:4px;white-space:nowrap}
+
+/* ── Location filter buttons ── */
+.oh-loc-btn{padding:5px 12px;border-radius:8px;border:1.5px solid rgba(67,86,99,.2);background:white;color:var(--tm);font-family:'Lexend',sans-serif;font-size:.74rem;font-weight:500;cursor:pointer;transition:all .18s;white-space:nowrap}
+.oh-loc-btn:hover{border-color:var(--gd);color:var(--gd)}
+.oh-loc-btn.active{background:var(--gd);color:white;border-color:var(--gd)}
+
+/* ── Location dept sub-section ── */
+.oh-loc-dept-block{margin-bottom:18px}
+.oh-loc-dept-title{font-size:.72rem;font-weight:700;color:var(--nv);text-transform:uppercase;letter-spacing:.08em;padding:5px 10px;background:var(--gl);border-radius:7px;display:inline-block;margin-bottom:8px;color:white}
+.oh-loc-emp-grid{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ── Employee card (used inside location view) ── */
+.oh-emp-card{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r1);border:1.5px solid var(--br);background:white;cursor:pointer;transition:all .18s;min-width:180px;max-width:240px}
+.oh-emp-card:hover{border-color:var(--gd);box-shadow:0 2px 10px rgba(47,107,63,.12);transform:translateY(-1px)}
+.oh-emp-card.oh-inactive{opacity:.5}
+.oh-emp-card-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:white;flex-shrink:0}
+.oh-emp-card-info p{font-size:.8rem;font-weight:600;color:var(--nv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.oh-emp-card-info small{font-size:.66rem;color:var(--tl)}
+
+/* ── node highlight on selected ── */
+.oh-node.oh-selected{border-color:var(--gd);box-shadow:0 0 0 3px rgba(47,107,63,.15);background:linear-gradient(135deg,rgba(47,107,63,.04),rgba(163,176,135,.08))}
+
+/* ── Employee detail modal rows ── */
+.oh-dp-row{display:flex;flex-direction:column;gap:2px;padding:5px 0;border-bottom:1px solid rgba(163,176,135,.12)}
+.oh-dp-row:last-child{border-bottom:none}
+.oh-dp-lbl{font-size:.6rem;color:var(--tl);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.oh-dp-val{font-size:.8rem;color:var(--tx);margin-top:1px}
+.oh-dp-val.hl{color:var(--gd);font-weight:600}
+.oh-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 20px;background:#f8faf6;border-bottom:1.5px solid var(--br)}
+.oh-search-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1.5px solid rgba(67,86,99,.2);border-radius:10px;background:white;flex:1;min-width:180px;max-width:320px;transition:border-color .2s}
+.oh-search-bar:focus-within{border-color:var(--gd)}
+.oh-search-bar i{color:var(--gd);font-size:.85rem;flex-shrink:0}
+.oh-search-bar input{border:none;outline:none;font-family:'Lexend',sans-serif;font-size:.82rem;color:var(--tx);background:transparent;width:100%}
+.oh-filter-group{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.oh-filter-lbl{font-size:.72rem;font-weight:600;color:var(--tl)}
+.oh-filter-btn{padding:6px 12px;border-radius:8px;border:1.5px solid rgba(67,86,99,.2);background:white;color:var(--tm);font-family:'Lexend',sans-serif;font-size:.76rem;font-weight:500;cursor:pointer;transition:all .18s;white-space:nowrap}
+.oh-filter-btn:hover{border-color:var(--gd);color:var(--gd)}
+.oh-filter-btn.active{background:var(--nv);color:white;border-color:var(--nv)}
+.oh-view-toggle{display:flex;border:1.5px solid rgba(67,86,99,.2);border-radius:8px;overflow:hidden;margin-left:auto}
+.oh-view-btn{padding:6px 14px;border:none;background:white;color:var(--tm);font-family:'Lexend',sans-serif;font-size:.76rem;font-weight:500;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.oh-view-btn:not(:last-child){border-right:1px solid rgba(67,86,99,.15)}
+.oh-view-btn.active{background:var(--nv);color:white}
+.oh-stats-row{display:flex;gap:10px;padding:12px 20px;border-bottom:1.5px solid var(--br);flex-wrap:wrap;background:#fafbf8}
+.oh-stat{display:flex;flex-direction:column;gap:2px;padding:8px 16px;border-radius:var(--r1);background:white;border:1.5px solid var(--br);min-width:90px}
+.oh-stat-num{font-size:1.4rem;font-weight:700;color:var(--nv);line-height:1}
+.oh-stat-lbl{font-size:.62rem;color:var(--tl);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.oh-breadcrumb{display:flex;align-items:center;gap:6px;padding:8px 20px;background:#f5f7f3;border-bottom:1px solid var(--br);font-size:.72rem;color:var(--tl);flex-wrap:wrap}
+.oh-bc-home{color:var(--gd);cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px}
+.oh-bc-home:hover{text-decoration:underline}
+.oh-bc-sep{color:var(--tl)}
+.oh-bc-node{color:var(--tx);font-weight:500}
+.oh-body{display:flex;min-height:480px}
+.oh-tree-wrap{flex:1;overflow:auto;padding:20px}
+.oh-detail-panel{width:290px;flex-shrink:0;border-left:1.5px solid var(--br);background:#fafbf8;overflow-y:auto;display:flex;flex-direction:column}
+.oh-loading{display:flex;align-items:center;gap:10px;padding:40px;color:var(--tl);font-size:.85rem}
+.oh-loading i{color:var(--gd)}
+/* Node styles */
+.oh-node{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r2);border:1.5px solid var(--br);background:white;cursor:pointer;transition:all .18s;min-width:200px;max-width:270px;width:fit-content}
+.oh-node:hover{border-color:var(--gd);box-shadow:0 3px 12px rgba(47,107,63,.12);transform:translateY(-1px)}
+.oh-node.oh-selected{border-color:var(--gd);box-shadow:0 0 0 3px rgba(47,107,63,.12)}
+.oh-node.oh-root{border-color:var(--nv);background:linear-gradient(135deg,rgba(49,54,71,.04),rgba(49,54,71,.01))}
+.oh-node.oh-inactive{opacity:.55}
+.oh-node-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:white;flex-shrink:0}
+.oh-node-info{flex:1;min-width:0}
+.oh-node-name{font-size:.82rem;font-weight:600;color:var(--nv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oh-node-title{font-size:.67rem;color:var(--tl);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oh-node-dept{font-size:.6rem;padding:2px 7px;border-radius:10px;background:rgba(47,107,63,.08);color:var(--gd);font-weight:600;margin-top:3px;display:inline-block}
+.oh-expand-btn{width:20px;height:20px;border-radius:50%;background:rgba(47,107,63,.1);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:.6rem;color:var(--gd);transition:all .18s}
+.oh-expand-btn:hover{background:var(--gd);color:white}
+.oh-sub-count{font-size:.6rem;padding:1px 6px;border-radius:10px;background:rgba(49,54,71,.07);color:var(--nv);font-weight:700;flex-shrink:0}
+.oh-children{padding-left:38px;display:flex;flex-direction:column;gap:8px;margin-top:8px;position:relative}
+.oh-children::before{content:'';position:absolute;left:14px;top:0;bottom:20px;width:2px;background:rgba(47,107,63,.15);border-radius:2px}
+.oh-child-wrap{position:relative}
+.oh-child-wrap::before{content:'';position:absolute;left:-24px;top:21px;width:22px;height:2px;background:rgba(47,107,63,.15)}
+/* Detail panel */
+.oh-detail-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 20px;color:var(--tl);text-align:center;flex:1;justify-content:center}
+.oh-detail-empty i{font-size:2.5rem;opacity:.12;color:var(--gd)}
+.oh-detail-empty p{font-size:.85rem;font-weight:600;color:var(--tm)}
+.oh-detail-empty small{font-size:.74rem}
+.oh-dp-head{padding:16px;border-bottom:1.5px solid var(--br)}
+.oh-dp-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:white;margin-bottom:10px}
+.oh-dp-name{font-size:.95rem;font-weight:700;color:var(--nv)}
+.oh-dp-subtitle{font-size:.74rem;color:var(--tl);margin-top:3px}
+.oh-dp-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.oh-dp-badge{padding:3px 9px;border-radius:20px;font-size:.65rem;font-weight:600;background:rgba(49,54,71,.08);color:var(--nv)}
+.oh-dp-body{padding:14px 16px;flex:1;overflow-y:auto}
+.oh-dp-section{font-size:.62rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.08em;padding-bottom:5px;border-bottom:1px solid var(--br);margin-bottom:8px;margin-top:14px}
+.oh-dp-section:first-child{margin-top:0}
+.oh-dp-row{display:flex;flex-direction:column;gap:1px;padding:5px 0;border-bottom:1px solid rgba(163,176,135,.1)}
+.oh-dp-row:last-child{border-bottom:none}
+.oh-dp-lbl{font-size:.6rem;color:var(--tl);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.oh-dp-val{font-size:.78rem;color:var(--tx);margin-top:1px}
+.oh-dp-val.hl{color:var(--gd);font-weight:600}
+.oh-dp-subs{padding:12px 16px;border-top:1.5px solid var(--br)}
+.oh-sub-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:8px;background:rgba(47,107,63,.06);border:1px solid rgba(47,107,63,.15);font-size:.68rem;color:var(--gd);font-weight:500;margin:3px 2px 0 0;cursor:pointer;transition:all .15s}
+.oh-sub-chip:hover{background:rgba(47,107,63,.12)}
+.oh-sub-chip-av{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:white;flex-shrink:0}
+/* Legend */
+.oh-legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 20px;background:#f8faf6;border-top:1px solid var(--br);font-size:.68rem;color:var(--tl)}
+.oh-legend-item{display:flex;align-items:center;gap:5px}
+.oh-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -1952,6 +2193,69 @@ body{font-family:'Lexend',sans-serif;background:#f2f4f0;color:var(--tx);zoom:75%
 /* ══════════════════════════════════════════════
    PROGRESS MODAL HELPER FUNCTION
 ══════════════════════════════════════════════ */
+function showTicketCreateProgress(onComplete) {
+  const $modal = $('#progressModal');
+  const $bar = $('#actionProgressBar');
+  const $text = $('#actionProgressText');
+  const $sub = $('#actionProgressSub');
+  const $spinner = $('#progressSpinner');
+  const $head = $modal.find('.kmodal-head h3');
+
+  $head.html('<i class="fas fa-ticket-alt"></i> Creating Ticket');
+  $bar.css('width', '0%');
+  $text.text('Initialising ticket…');
+  $sub.text('Please wait while we create and notify assignees');
+  $spinner.addClass('hidden');
+  $modal.removeClass('hidden');
+
+  const steps = [
+    { pct: 15, msg: 'Verifying caller details…',    sub: 'Checking farmer / entity data' },
+    { pct: 30, msg: 'Saving ticket to database…',   sub: 'Assigning ticket ID' },
+    { pct: 50, msg: 'Uploading attachments…',        sub: 'Processing files' },
+    { pct: 65, msg: 'Notifying assignees…',          sub: 'Sending email notifications' },
+    { pct: 80, msg: 'Sending SMS alerts…',           sub: 'Dispatching farmer SMS' },
+    { pct: 90, msg: 'Finalising ticket…',            sub: 'Almost done…' },
+  ];
+
+  let stepIdx = 0;
+  const interval = setInterval(function () {
+    if (stepIdx < steps.length) {
+      const s = steps[stepIdx++];
+      $bar.css('width', s.pct + '%');
+      $text.text(s.msg);
+      $sub.text(s.sub);
+    }
+  }, 400);
+
+  return {
+    success: function (ticketId) {
+      clearInterval(interval);
+      $bar.css('width', '100%');
+      $text.html('<i class="fas fa-check-circle" style="color:#28a745;margin-right:6px"></i> Ticket Created — <strong>' + ticketId + '</strong>');
+      $sub.text('Notifications sent. Closing…');
+      setTimeout(function () {
+        $modal.addClass('hidden');
+        $head.html('<i class="fas fa-envelope"></i> Sending Notification');
+        if (typeof onComplete === 'function') onComplete();
+      }, 1200);
+    },
+    error: function (msg) {
+      clearInterval(interval);
+      $bar.css('width', '100%').css('background', 'linear-gradient(90deg,#c0392b,#e74c3c)');
+      $text.html('<i class="fas fa-exclamation-triangle" style="color:#dc3545;margin-right:6px"></i> Submission Failed');
+      $sub.text(msg || 'Please try again.');
+      $spinner.removeClass('hidden').html('<i class="fas fa-exclamation-triangle fa-2x" style="color:#dc3545;margin-top:15px"></i>');
+      setTimeout(function () {
+        $modal.addClass('hidden');
+        $bar.css('background', '');
+        $spinner.addClass('hidden').empty();
+        $head.html('<i class="fas fa-envelope"></i> Sending Notification');
+      }, 2500);
+    }
+  };
+}
+
+
 function showProgressModal(actionType, callback) {
   const $modal = $('#progressModal');
   const $progressBar = $('#actionProgressBar');
@@ -2071,6 +2375,474 @@ function refreshSidebarCounts(){
 refreshSidebarCounts();
 
 /* ══════════════════════════════════════════════
+   ORG HIERARCHY PANEL
+══════════════════════════════════════════════ */
+const OH = {
+  employees: [],
+  expanded: {},
+  selectedId: null,
+  currentDept: '',
+  currentLoc: '',
+  currentSearch: '',
+  view: 'tree',
+  allDepts: [],
+  allLocs: [],
+
+  DEPT_COLORS: {},
+
+  _colorPalette: [
+    '#2F6B3F','#138496','#6f42c1','#b8860b','#c85a0a',
+    '#313647','#1e7e34','#c0392b','#435663','#7b3fa0',
+    '#0a7a8e','#d4610a','#1e55a3','#5a6270','#3a7d4f'
+  ],
+
+  deptColor(dept){
+    if(!dept) return '#435663';
+    if(!this.DEPT_COLORS[dept]){
+      const idx = Object.keys(this.DEPT_COLORS).length % this._colorPalette.length;
+      this.DEPT_COLORS[dept] = this._colorPalette[idx];
+    }
+    return this.DEPT_COLORS[dept];
+  },
+
+  initials(name){
+    return (name||'').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'??';
+  },
+
+  init(){
+    this.bindEvents();
+    $('.snav-btn[data-target="org-hierarchy"]').on('click', ()=>{
+      if(!this.employees.length) this.load();
+    });
+  },
+
+  bindEvents(){
+    const self = this;
+
+    $('#ohSearch').on('input', function(){
+      self.currentSearch = $(this).val().trim();
+      self.refresh();
+    });
+
+    // Dept filters — dynamic, delegated
+    $(document).on('click', '.oh-filter-btn', function(){
+      $('.oh-filter-btn').removeClass('active');
+      $(this).addClass('active');
+      self.currentDept = $(this).data('dept');
+      self.currentLoc = '';
+      $('.oh-loc-btn').removeClass('active').first().addClass('active');
+      self.refresh();
+    });
+
+    // Location filters — dynamic, delegated
+    $(document).on('click', '.oh-loc-btn', function(){
+      $('.oh-loc-btn').removeClass('active');
+      $(this).addClass('active');
+      self.currentLoc = $(this).data('loc');
+      self.refresh();
+    });
+
+    $('#ohVTree').on('click', ()=> this.setView('tree'));
+    $('#ohVTable').on('click', ()=> this.setView('table'));
+
+    $('#ohBcHome').on('click', ()=>{
+      this.selectedId = null;
+      $('.oh-bc-sep,.oh-bc-node').addClass('hidden');
+      this.refresh();
+    });
+
+    // Employee detail modal close
+    $('#closeEmpModal, #closeEmpModal2').on('click', ()=>{
+      $('#empDetailModal').addClass('hidden');
+    });
+    $('#empDetailModal').on('click', function(e){
+      if($(e.target).is('#empDetailModal')) $(this).addClass('hidden');
+    });
+  },
+
+  load(){
+    $('#ohTreeContainer').html('<div class="oh-loading"><i class="fas fa-spinner fa-spin"></i> Loading hierarchy…</div>');
+    $.getJSON('/api/org/hierarchy/').done(res => {
+      this.employees = res.employees || [];
+      this.allDepts  = res.departments || [...new Set(this.employees.map(e=>e.department).filter(Boolean))].sort();
+      this.allLocs   = res.locations   || [...new Set(this.employees.map(e=>e.work_address).filter(Boolean))].sort();
+
+      // Seed dept colors in a stable order
+      this.allDepts.forEach(d => this.deptColor(d));
+
+      // Build dynamic dept filter buttons
+      const $deptF = $('#ohDeptFilters');
+      $deptF.find('.oh-filter-btn').not('[data-dept=""]').remove();
+      this.allDepts.forEach(dept => {
+        const col = this.deptColor(dept);
+        const short = dept.replace('HUMAN RESOUCE','HR')
+          .replace('CS & SUPPORT SERVICES','CS & Supp')
+          .replace('FINANCE AND ACCOUNTS','Finance')
+          .replace('CS, Legal & Business Support Services','CS Legal')
+          .replace('IT & MIS','IT & MIS');
+        $deptF.append(
+          `<button class="oh-filter-btn" data-dept="${dept}"
+            style="border-left:3px solid ${col}">${short}</button>`
+        );
+      });
+
+      // Build dynamic location filter buttons
+      const $locRow = $('#ohLocationRow');
+      $locRow.find('.oh-loc-btn').not('[data-loc=""]').remove();
+      this.allLocs.forEach(loc => {
+        $locRow.append(`<button class="oh-loc-btn" data-loc="${loc}">${loc}</button>`);
+      });
+      if(this.allLocs.length > 0) $locRow.css('display','flex');
+
+      // Default all expanded
+      this.employees.forEach(e=>{ this.expanded[e.id] = true; });
+
+      this._buildLegend();
+      this.refresh();
+    }).fail(() => {
+      $('#ohTreeContainer').html('<div class="oh-loading"><i class="fas fa-exclamation-circle" style="color:#dc3545"></i> Failed to load. Please try again.</div>');
+    });
+  },
+
+  _buildLegend(){
+    const $leg = $('#ohLegend').empty();
+    $leg.append('<span style="font-weight:600;color:var(--nv);font-size:.72rem">Legend:</span>');
+    this.allDepts.forEach(dept => {
+      const col = this.deptColor(dept);
+      const short = dept.replace('HUMAN RESOUCE','HR')
+        .replace('CS & SUPPORT SERVICES','CS & Supp')
+        .replace('FINANCE AND ACCOUNTS','Finance')
+        .replace('CS, Legal & Business Support Services','CS Legal');
+      $leg.append(
+        `<div class="oh-legend-item">
+          <div class="oh-legend-dot" style="background:${col}"></div> ${short}
+         </div>`
+      );
+    });
+    $leg.append(`<div class="oh-legend-item">
+      <div class="oh-legend-dot" style="background:rgba(192,57,43,.5);border:1px dashed #c0392b"></div> Inactive
+    </div>`);
+  },
+
+  buildTree(list){
+    const map={}, roots=[];
+    list.forEach(e=>{ map[e.id]={...e, children:[]}; });
+    list.forEach(e=>{
+      if(e.manager_id && map[e.manager_id]) map[e.manager_id].children.push(map[e.id]);
+      else roots.push(map[e.id]);
+    });
+    return roots;
+  },
+
+  renderNode(node, depth=0){
+    const self = this;
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded  = this.expanded[node.id] !== false;
+    const isSelected  = this.selectedId === node.id;
+    const col         = this.deptColor(node.department);
+    const deptShort   = (node.department||'')
+      .replace('HUMAN RESOUCE','HR')
+      .replace('CS & SUPPORT SERVICES','CS & Supp')
+      .replace('FINANCE AND ACCOUNTS','Finance')
+      .replace('CS, Legal & Business Support Services','CS Legal');
+
+    const $wrap = $('<div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">');
+    const $nodeEl = $(`<div class="oh-node${isSelected?' oh-selected':''}${depth===0?' oh-root':''}${!node.login_status?' oh-inactive':''}"
+      style="cursor:pointer">`);
+    $nodeEl.html(`
+      <div class="oh-node-av" style="background:${col}">${this.initials(node.full_name)}</div>
+      <div class="oh-node-info">
+        <div class="oh-node-name">${node.full_name}</div>
+        <div class="oh-node-title">${node.employee_title||node.employee_type||''}</div>
+        <span class="oh-node-dept" style="background:${col}22;color:${col}">${deptShort}</span>
+      </div>
+      ${!node.login_status?'<i class="fas fa-circle" style="color:#dc3545;font-size:.5rem;flex-shrink:0" title="Inactive"></i>':''}
+      ${hasChildren
+        ?`<button class="oh-expand-btn" title="${isExpanded?'Collapse':'Expand'}">
+            <i class="fas fa-chevron-${isExpanded?'down':'right'}"></i>
+          </button>
+          <span class="oh-sub-count">${node.children.length}</span>`
+        :''}
+    `);
+
+    $nodeEl.on('click', (e)=>{
+      e.stopPropagation();
+      self.selectNode(node.id);
+    });
+    $nodeEl.find('.oh-expand-btn').on('click', (e)=>{
+      e.stopPropagation();
+      self.expanded[node.id] = !isExpanded;
+      self.refresh();
+    });
+    $wrap.append($nodeEl);
+
+    if(hasChildren && isExpanded){
+      const $children = $('<div class="oh-children">');
+      node.children.forEach(child=>{
+        const $cw = $('<div class="oh-child-wrap">');
+        $cw.append(this.renderNode(child, depth+1));
+        $children.append($cw);
+      });
+      $wrap.append($children);
+    }
+    return $wrap;
+  },
+
+  refresh(){
+    let filtered = this.employees;
+
+    if(this.currentDept)
+      filtered = filtered.filter(e => e.department === this.currentDept);
+
+    if(this.currentLoc)
+      filtered = filtered.filter(e => e.work_address === this.currentLoc);
+
+    if(this.currentSearch){
+      const q = this.currentSearch.toLowerCase();
+      filtered = filtered.filter(e=>
+        (e.full_name||'').toLowerCase().includes(q)        ||
+        (e.employee_code||'').toLowerCase().includes(q)    ||
+        (e.department||'').toLowerCase().includes(q)       ||
+        (e.employee_title||'').toLowerCase().includes(q)   ||
+        (e.work_address||'').toLowerCase().includes(q)
+      );
+    }
+
+    this.updateStats(filtered);
+
+    if(this.view === 'tree'){
+      // If a location is selected, show dept-wise grouped card view
+      if(!this.currentSearch && !this.currentDept){
+        this.renderLocationView(filtered);
+      } else {
+        this.renderTree(this.buildTree(filtered));
+      }
+    }
+  },
+
+    renderLocationView(filtered){
+    const $c = $('#ohTreeContainer').empty();
+    if(!filtered.length){
+      $c.html('<div class="oh-loading"><i class="fas fa-search" style="color:var(--tl)"></i> No employees found</div>');
+      return;
+    }
+    const self = this;
+
+    if(this.currentLoc){
+      // Specific location selected — group by department only
+      const byDept = {};
+      filtered.forEach(e=>{
+        const d = e.department || 'Other';
+        if(!byDept[d]) byDept[d] = [];
+        byDept[d].push(e);
+      });
+      Object.keys(byDept).sort().forEach(dept=>{
+        const col = this.deptColor(dept);
+        const $block = $('<div class="oh-loc-dept-block">');
+        $block.append(`<div class="oh-loc-dept-title" style="background:${col}">${dept} <span style="opacity:.7;font-size:.65rem">(${byDept[dept].length})</span></div>`);
+        const $grid = $('<div class="oh-loc-emp-grid">');
+        byDept[dept].forEach(emp=>{
+          const $card = $(`<div class="oh-emp-card${emp.login_status?'':' oh-inactive'}">`).html(`
+            <div class="oh-emp-card-av" style="background:${col}">${self.initials(emp.full_name)}</div>
+            <div class="oh-emp-card-info">
+              <p title="${emp.full_name}">${emp.full_name}</p>
+              <small>${emp.employee_title||emp.employee_type||''}</small>
+            </div>
+          `);
+          $card.on('click', ()=> self.openEmpModal(emp.id));
+          $grid.append($card);
+        });
+        $block.append($grid);
+        $c.append($block);
+      });
+
+    } else {
+      // All Locations — group by location first, then by department
+      const byLoc = {};
+      filtered.forEach(e=>{
+        const loc = e.work_address || 'Unassigned';
+        if(!byLoc[loc]) byLoc[loc] = {};
+        const dept = e.department || 'Other';
+        if(!byLoc[loc][dept]) byLoc[loc][dept] = [];
+        byLoc[loc][dept].push(e);
+      });
+
+      Object.keys(byLoc).sort().forEach(loc=>{
+        // Location header
+        const $locSection = $('<div>').css({marginBottom:'24px'});
+        const totalInLoc = Object.values(byLoc[loc]).reduce((s,arr)=>s+arr.length, 0);
+        $locSection.append(`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;
+            background:var(--nv);border-radius:var(--r2);margin-bottom:12px">
+            <i class="fas fa-map-marker-alt" style="color:var(--gl);font-size:.9rem"></i>
+            <span style="font-size:.88rem;font-weight:700;color:var(--cr)">${loc}</span>
+            <span style="margin-left:auto;font-size:.72rem;color:rgba(255,255,255,.5);
+              background:rgba(255,255,255,.1);padding:2px 9px;border-radius:20px">
+              ${totalInLoc} employee${totalInLoc!==1?'s':''}
+            </span>
+          </div>
+        `);
+
+        // Department sub-groups within this location
+        Object.keys(byLoc[loc]).sort().forEach(dept=>{
+          const col = this.deptColor(dept);
+          const $block = $('<div class="oh-loc-dept-block">').css({paddingLeft:'12px'});
+          $block.append(`<div class="oh-loc-dept-title" style="background:${col}">${dept} <span style="opacity:.7;font-size:.65rem">(${byLoc[loc][dept].length})</span></div>`);
+          const $grid = $('<div class="oh-loc-emp-grid">');
+          byLoc[loc][dept].forEach(emp=>{
+            const $card = $(`<div class="oh-emp-card${emp.login_status?'':' oh-inactive'}">`).html(`
+              <div class="oh-emp-card-av" style="background:${col}">${self.initials(emp.full_name)}</div>
+              <div class="oh-emp-card-info">
+                <p title="${emp.full_name}">${emp.full_name}</p>
+                <small>${emp.employee_title||emp.employee_type||''}</small>
+              </div>
+            `);
+            $card.on('click', ()=> self.openEmpModal(emp.id));
+            $grid.append($card);
+          });
+          $block.append($grid);
+          $locSection.append($block);
+        });
+
+        $c.append($locSection);
+      });
+    }
+  },
+
+  renderTable(filtered){
+    const self = this;
+    const $tbody = $('#ohEmpTbody').empty();
+    filtered.forEach(e=>{
+      const mgr = e.manager_id ? this.employees.find(x=>x.id===e.manager_id) : null;
+      const col = this.deptColor(e.department);
+      const $tr = $('<tr style="cursor:pointer">');
+      $tr.on('click', ()=> self.openEmpModal(e.id));
+      $tr.html(`
+        <td style="padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;color:white;flex-shrink:0">${self.initials(e.full_name)}</div>
+            <div>
+              <div style="font-size:.82rem;font-weight:600;color:var(--nv)">${e.full_name}</div>
+              <div style="font-size:.65rem;color:var(--tl);font-family:monospace">${e.employee_code}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;font-size:.78rem;color:var(--tm)">${e.employee_title||'—'}</td>
+        <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:600;background:${col}22;color:${col}">${e.department||'—'}</span></td>
+        <td style="padding:10px 12px;font-size:.78rem;color:var(--tl)">${mgr?mgr.full_name:'<span style="color:var(--gd);font-weight:600">Top Level</span>'}</td>
+        <td style="padding:10px 12px;font-size:.78rem;color:var(--tl)">${e.work_address||'—'}</td>
+        <td style="padding:10px 12px;font-size:.75rem;color:var(--tm)">${e.employee_type||'—'}</td>
+        <td style="padding:10px 12px"><span style="padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:600;background:${e.login_status?'rgba(40,167,69,.1)':'rgba(220,53,69,.08)'};color:${e.login_status?'#1e7e34':'#c0392b'}">${e.login_status?'Active':'Inactive'}</span></td>
+      `);
+      $tbody.append($tr);
+    });
+  },
+
+  openEmpModal(id){
+    const emp = this.employees.find(e=>e.id===id);
+    if(!emp) return;
+    const col  = this.deptColor(emp.department);
+    const mgr  = emp.manager_id ? this.employees.find(e=>e.id===emp.manager_id) : null;
+    const mgr2 = mgr && mgr.manager_id ? this.employees.find(e=>e.id===mgr.manager_id) : null;
+    const subs = this.employees.filter(e=>e.manager_id===emp.id);
+    const self = this;
+
+    // Header
+    $('#empModalHead').css('background', `linear-gradient(135deg,${col},${col}cc)`);
+    $('#empModalAv').text(this.initials(emp.full_name)).css('background', 'rgba(255,255,255,.2)');
+    $('#empModalName').text(emp.full_name);
+    $('#empModalTitle').text(emp.employee_title || emp.employee_type || '—');
+    $('#empModalStatus')
+      .text(emp.login_status ? 'Active' : 'Inactive')
+      .attr('class', `status-chip ${emp.login_status ? 'resolved' : 'closed'}`);
+
+    // Identity
+    $('#em_code').text(emp.employee_code || '—');
+    $('#em_dept').text(emp.department || '—');
+    $('#em_type').text(emp.employee_type || '—');
+    $('#em_loc').text(emp.work_address || '—');
+    $('#em_email').text(emp.email || '—');
+    $('#em_mobile').text(emp.mobile_number || '—');
+
+    // Reporting chain
+    const $chain = $('#em_chain').empty();
+    const chainNodes = [];
+    if(mgr2) chainNodes.push({emp: mgr2, role:'top'});
+    if(mgr)  chainNodes.push({emp: mgr,  role:'manager'});
+    chainNodes.push({emp: emp, role:'self'});
+
+    chainNodes.forEach((n, i)=>{
+      const nc = this.deptColor(n.emp.department);
+      const $row = $(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;
+        ${i<chainNodes.length-1?'border-bottom:1px solid rgba(163,176,135,.12)':''}">`)
+        .html(`
+          <div style="width:28px;height:28px;border-radius:50%;background:${nc};display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;color:white;flex-shrink:0">${this.initials(n.emp.full_name)}</div>
+          <div style="flex:1">
+            <div style="font-size:.8rem;font-weight:${n.role==='self'?700:500};color:${n.role==='self'?'var(--gd)':'var(--nv)'}">${n.emp.full_name}</div>
+            <div style="font-size:.64rem;color:var(--tl)">${n.emp.employee_title||n.emp.employee_type||''}</div>
+          </div>
+          ${n.role==='self'?'<span style="font-size:.62rem;padding:2px 7px;border-radius:10px;background:rgba(47,107,63,.1);color:var(--gd);font-weight:600">You</span>':''}
+          ${i<chainNodes.length-1?'':''}
+        `);
+      $chain.append($row);
+      if(i < chainNodes.length-1){
+        $chain.append(`<div style="width:2px;height:10px;background:rgba(47,107,63,.2);margin-left:13px"></div>`);
+      }
+    });
+    if(!mgr) $chain.append(`<div style="font-size:.76rem;color:var(--gd);font-weight:600;padding:6px 0"><i class="fas fa-star" style="margin-right:4px"></i>Top-level position</div>`);
+
+    // Direct reports
+    const $rep = $('#em_reports').empty();
+    if(subs.length){
+      subs.forEach(s=>{
+        const sc = this.deptColor(s.department);
+        const $chip = $(`<div class="oh-sub-chip" style="cursor:pointer">`).html(
+          `<div class="oh-sub-chip-av" style="background:${sc}">${self.initials(s.full_name)}</div>
+           ${s.full_name.split(' ')[0]}`
+        );
+        $chip.on('click', ()=>{ $('#empDetailModal').addClass('hidden'); setTimeout(()=>self.openEmpModal(s.id),100); });
+        $rep.append($chip);
+      });
+    } else {
+      $rep.html('<span style="font-size:.76rem;color:var(--tl);font-style:italic">No direct reports</span>');
+    }
+
+    // Update breadcrumb
+    $('.oh-bc-sep,.oh-bc-node').removeClass('hidden');
+    $('.oh-bc-node').text(emp.full_name);
+
+    // Mark selected in tree
+    this.selectedId = id;
+    this.refresh();
+
+    $('#empDetailModal').removeClass('hidden');
+  },
+
+  selectNode(id){
+    this.openEmpModal(id);
+  },
+
+  updateStats(filtered){
+    $('#oh-stat-total').text(filtered.length);
+    $('#oh-stat-depts').text([...new Set(filtered.map(e=>e.department).filter(Boolean))].length);
+    $('#oh-stat-mgrs').text(filtered.filter(e=>(e.employee_type||'').toLowerCase().includes('manager')).length);
+    $('#oh-stat-locs').text([...new Set(filtered.filter(e=>e.work_address).map(e=>e.work_address))].length);
+    $('#oh-stat-active').text(filtered.filter(e=>e.login_status).length);
+  },
+
+  setView(v){
+    this.view = v;
+    $('#ohVTree').toggleClass('active', v==='tree');
+    $('#ohVTable').toggleClass('active', v==='table');
+    $('#ohTreeView').toggleClass('hidden', v!=='tree');
+    $('#ohTableView').toggleClass('hidden', v!=='table');
+    this.refresh();
+  },
+};
+
+OH.init();
+
+/* ══════════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════════ */
 function v(x){return(x&&x!=='')?x:'—';}
@@ -2120,6 +2892,10 @@ $('.snav-btn').on('click',function(){
   if(target==='create')$('#panel-create').removeClass('hidden');
 else if(target==='my-tickets'){$('#panel-tickets').removeClass('hidden');renderTicketsTable();}
 else if(target==='activity-timeline')$('#panel-activity-timeline').removeClass('hidden');
+else if(target==='org-hierarchy'){
+  $('#panel-org-hierarchy').removeClass('hidden');
+  if(!OH.employees.length) OH.load();
+}
 else if(target==='assign'){
   // keep whichever panel is already open; just open the modal
   // restore active panel state
@@ -3989,21 +4765,241 @@ $(document).on('click', function(e) {
   if (!$(e.target).closest('.atl-search-wrap').length) $('#atlSuggestions').addClass('hidden');
 });
 
-// ══════════════════════════════════════════════
-//  ASSIGN TICKET MODAL  — place this INSIDE $(function(){ ... })
-//  i.e. BEFORE the final });  that closes the jQuery ready block
-// ══════════════════════════════════════════════
+/* ══════════════════════════════════════════════
+   FORM SUBMIT WITH ATTACHMENTS
+══════════════════════════════════════════════ */
+$('#createTicketForm').on('submit', function(e) {
+  e.preventDefault();
+  
+  const btn = $(this).find('.btn-primary-action');
+  btn.html('<i class="fas fa-spinner fa-spin"></i> Submitting…').prop('disabled', true);
+  const progress = showTicketCreateProgress();
 
-let atModalTicketId   = null;
+  const activeType = $('input[name="entity_type"]:checked').val() || 'other';
+
+  // Create FormData object for multipart submission
+  const formData = new FormData();
+  
+  // Add all form fields
+  formData.append('entity_type', activeType);
+  formData.append('ticket_type', $('#ticketTypeSelect').val() || 'Others');
+  formData.append('priority', $('input[name="priority"]:checked').val() || 'medium');
+  formData.append('description_en', $('#issueDescEng').val().trim());
+  formData.append('description_hi', $('#issueDescHindi').val().trim());
+  formData.append('assignee_ids', JSON.stringify(formAssignees.map(e => e.id)));
+  
+  const expectedDate = $('#expectedResolutionDate').val();
+  if (expectedDate) formData.append('expected_resolution_date', expectedDate);
+  
+  // Entity FKs
+  if (activeType === 'farmer' && selectedFarmerPk) formData.append('farmer_pk', selectedFarmerPk);
+  else if (activeType === 'sahayak' && selectedMppPk) formData.append('mpp_pk', selectedMppPk);
+  else if (activeType === 'transporter' && selectedTransporterPk) formData.append('transporter_pk', selectedTransporterPk);
+  
+  // Caller contact box
+  if (activeType === 'farmer') {
+    formData.append('caller_name', $('#farmer_caller_name').val().trim());
+    formData.append('caller_mobile', $('#farmer_caller_mobile').val().trim());
+    formData.append('caller_relation', $('#farmer_caller_relation').val());
+  } else if (activeType === 'sahayak') {
+    formData.append('caller_name', $('#sahayak_caller_name').val().trim());
+    formData.append('caller_mobile', $('#sahayak_caller_mobile').val().trim());
+    formData.append('caller_relation', $('#sahayak_caller_relation').val());
+  } else if (activeType === 'transporter') {
+    formData.append('caller_name', $('#trans_caller_name').val().trim());
+    formData.append('caller_mobile', $('#trans_caller_mobile').val().trim());
+    formData.append('caller_relation', $('#trans_caller_relation').val());
+  } else {
+    formData.append('other_caller_name', $('#other_name').val().trim());
+    formData.append('other_caller_mobile', $('#other_mobile').val().trim());
+    formData.append('other_caller_location', $('#other_location').val().trim());
+    formData.append('on_behalf_of', $('#other_behalf').val().trim());
+    formData.append('caller_relation', $('#other_relation').val());
+  }
+  
+  // Add attachments
+  createAttachments.forEach(att => {
+    formData.append('attachments', att.file, att.name);
+  });
+  
+  // Send as multipart form data
+  $.ajax({
+    url: '/api/tickets/create/',
+    method: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    headers: { 'X-CSRFToken': CSRF },
+    success: function(res) {
+      btn.html('<i class="fas fa-paper-plane"></i> Submit Ticket').prop('disabled', false);
+      const names = formAssignees.map(function(e) { return e.full_name; }).join(', ') || '(unassigned)';
+      let msg = 'Ticket submitted! ID: <strong>' + res.ticket_id + '</strong> — Assigned to ' + names;
+      if (res.attachments_count) {
+        msg += `<br><i class="fas fa-paperclip"></i> ${res.attachments_count} file(s) attached`;
+      }
+      progress.success(res.ticket_id, function() { showToast(msg); });
+      
+      /* Reset form */
+      document.getElementById('createTicketForm').reset();
+      selectedFarmerPk = selectedMppPk = selectedTransporterPk = null;
+      formAssignees = [];
+      refreshFormAssignees();
+      createAttachments = [];
+      updateCreateAttachmentsPreview();
+      $('#lookupAutofill,#sahayakAutofill,#transAutofill').addClass('hidden');
+      $('#farmerDetailCard,#sahayakDetailCard,#transDetailCard').addClass('hidden');
+      $('#farmerCallerBox,#sahayakCallerBox,#transCallerBox').addClass('hidden');
+      $('#issueDescHindi').val('');
+      updateEntityType('farmer');
+      refreshSidebarCounts();
+    },
+    error: function(r) {
+      btn.html('<i class="fas fa-paper-plane"></i> Submit Ticket').prop('disabled', false);
+      let msg = 'Submission failed. Please try again.';
+      try {
+        const resp = JSON.parse(r.responseText);
+        msg = resp.error || msg;
+      } catch(ex) {}
+      progress.error(msg);
+    }
+  });
+});
+// Prevent Enter key from submitting the form on any input/textarea
+$('#createTicketForm input, #createTicketForm textarea, #createTicketForm select').on('keypress', function(e) {
+  if (e.which === 13 && !$(this).is('textarea')) {
+    e.preventDefault();
+    return false;
+  }
+});
+
+/* Dropzone */
+const dz = document.getElementById('dropzone');
+if (dz) {
+  dz.addEventListener('click', function() { document.getElementById('fileInput').click(); });
+  dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', function() { dz.classList.remove('drag-over'); });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) {
+      addCreateAttachments(Array.from(e.dataTransfer.files));
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   AUTO-SET EXPECTED RESOLUTION DATE BY PRIORITY (SLA)
+══════════════════════════════════════════════ */
+const SLA_HOURS = { critical: 24, high: 30, medium: 48, low: 72 };
+const SLA_LABEL = { critical: '1 day SLA', high: '30 hrs SLA', medium: '48 hrs SLA', low: '72 hrs SLA' };
+
+function setResolutionDateFromPriority(priority) {
+  const hours = SLA_HOURS[priority];
+  if (!hours) return;
+  const now = new Date();
+  now.setHours(now.getHours() + hours);
+  // Format as YYYY-MM-DD for date input
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}-${mm}-${dd}`;
+  $('#expectedResolutionDate').val(dateStr);
+  $('#slaAutoLabel').text(`${SLA_LABEL[priority]} — Auto-set`);
+  $('#slaAutoTag').removeClass('hidden').css('display', 'flex');
+}
+
+// Wire to priority radio buttons
+$('input[name="priority"]').on('change', function () {
+  setResolutionDateFromPriority($(this).val());
+});
+
+// Set initial value on page load (medium is checked by default)
+setResolutionDateFromPriority('medium');
+
+/* Hindi translation for create ticket form */
+let translateTimer = null, lastTranslatedEng = '';
+function translateToHindiForForm(text) {
+  text = text.trim();
+  if (!text) { $('#issueDescHindi').val(''); lastTranslatedEng = ''; return; }
+  if (text === lastTranslatedEng) return;
+  lastTranslatedEng = text;
+  const $h = $('#issueDescHindi');
+  $h.css('opacity', '.5');
+  $.getJSON('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=' + encodeURIComponent(text), function(data) {
+    try {
+      let r = '';
+      if (data && data[0]) {
+        data[0].forEach(function(p) { if (p && p[0]) r += p[0]; });
+      }
+      $h.val(r || text);
+    } catch(err) {
+      $h.val(text);
+    }
+    $h.css('opacity', '1');
+  }).fail(function() { $h.val(text).css('opacity', '1'); });
+}
+
+$('#issueDescEng').on('keyup', function(e) {
+  const t = $(this).val();
+  if (!t.trim()) { $('#issueDescHindi').val(''); lastTranslatedEng = ''; return; }
+  clearTimeout(translateTimer);
+  translateTimer = setTimeout(function() { translateToHindiForForm($('#issueDescEng').val()); }, e.which === 32 || e.which === 13 ? 300 : 800);
+}).on('input', function() {
+  if (!$(this).val().trim()) { $('#issueDescHindi').val(''); lastTranslatedEng = ''; }
+});
+
+/* ── Sidebar stat cards → open tickets panel filtered ── */
+$('.sstat-clickable').on('click', function() {
+  const filter = $(this).data('filter');
+
+  // Switch to tickets panel
+  $('.snav-btn').removeClass('active');
+  $('.snav-btn[data-target="my-tickets"]').addClass('active');
+  $('#panel-create,#panel-activity-timeline').addClass('hidden');
+  $('#panel-tickets').removeClass('hidden');
+
+  // Apply the status filter
+  activeStatusFilter = filter;
+  $('.tbl-filter-btn').removeClass('active');
+  $('.tbl-filter-btn[data-f="' + filter + '"]').addClass('active');
+
+  // Reset all other filters
+  currentFilterType = '';
+  currentFilterPriority = '';
+  currentFilterEntity = '';
+  currentFilterSearch = '';
+  $('#filterType,#filterPriority,#filterEntity').val('');
+  $('#filterSearch').val('');
+  ticketsPage = 1;
+
+  // Highlight active stat card
+  $('.sstat-clickable').removeClass('sstat-active');
+  $(this).addClass('sstat-active');
+
+  renderTicketsTable();
+
+  // Scroll to tickets panel
+  setTimeout(function() {
+    document.getElementById('panel-tickets').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
+});
+
+/* Initialize */
+renderTicketsTable();
+refreshSidebarCounts();
+
+/* ══════════════════════════════════════════════
+   ASSIGN TICKET MODAL
+══════════════════════════════════════════════ */
+let atModalTicketId = null;
 let atModalNewAssignees = [];
-let atModalSearchTimer  = null;
-let atModalEmpTimer     = null;
+let atModalSearchTimer = null;
+let atModalEmpTimer = null;
 
-// ── Open the modal (optionally pre-fill a ticket id) ──────────
 function openAssignTicketModal(prefillId) {
-  atModalTicketId     = null;
+  // Reset state
+  atModalTicketId = null;
   atModalNewAssignees = [];
-
   $('#atModalSearchInput').val('');
   $('#atModalSuggestions').addClass('hidden').empty();
   $('#atModalTicketInfo').addClass('hidden');
@@ -4014,7 +5010,6 @@ function openAssignTicketModal(prefillId) {
   $('#atModalNewChips').html('<span class="ach-placeholder">No new assignees selected…</span>');
   $('#atModalCurrentChips').html('<span class="ach-placeholder">No assignees yet…</span>');
   $('#atModalChainsContainer').addClass('hidden');
-  $('#atModalChains').empty();
   $('#atModalEmpSearch').val('');
   $('#atModalEmpSuggestions').addClass('hidden').empty();
 
@@ -4024,18 +5019,16 @@ function openAssignTicketModal(prefillId) {
     $('#atModalSearchInput').val(prefillId);
     _atModalLoadTicket(prefillId);
   } else {
-    setTimeout(() => $('#atModalSearchInput').focus(), 120);
+    setTimeout(function() { $('#atModalSearchInput').focus(); }, 120);
   }
 }
 
-// ── Load & render one ticket into the modal ───────────────────
 function _atModalLoadTicket(rawId) {
   let ticketId = (rawId || '').trim().toUpperCase();
-  const year   = new Date().getFullYear();
+  const year = new Date().getFullYear();
   if (/^\d+$/.test(ticketId)) {
     ticketId = 'TKT-' + year + '-' + ticketId.padStart(6, '0');
   }
-
   $('#atModalSearchInput').val(ticketId);
   $('#atModalEmptyNotice').hide();
   $('#atModalTicketInfo').addClass('hidden');
@@ -4045,9 +5038,8 @@ function _atModalLoadTicket(rawId) {
   atModalNewAssignees = [];
   $('#atModalNewChips').html('<span class="ach-placeholder">No new assignees selected…</span>');
   $('#atModalChainsContainer').addClass('hidden');
-  $('#atModalChains').empty();
 
-  API.ticketActivity(ticketId).done(function (res) {
+  API.ticketActivity(ticketId).done(function(res) {
     if (!res.ok) {
       showToast('Ticket <strong>' + ticketId + '</strong> not found.');
       $('#atModalEmptyNotice').show();
@@ -4056,7 +5048,6 @@ function _atModalLoadTicket(rawId) {
     const t = res.ticket;
     atModalTicketId = t.id;
 
-    // ── Ticket info bar ──────────────────────────────
     $('#atModal_tid').text(t.id);
     $('#atModal_status')
       .text(t.status.charAt(0).toUpperCase() + t.status.slice(1))
@@ -4069,52 +5060,36 @@ function _atModalLoadTicket(rawId) {
     $('#atModal_location').text(t.location);
     $('#atModalTicketInfo').removeClass('hidden');
 
-    // ── Currently assigned employees ────────────────
+    // Current assignees
     const $cur = $('#atModalCurrentChips').empty();
-    const assigned = t.assigned || [];   // array of {name, code} objects
-
-    if (assigned.length) {
-      assigned.forEach(function (a) {
+    if (t.assigned && t.assigned.length) {
+      t.assigned.forEach(function(a) {
         $cur.append(
           '<div class="ach-chip">' +
-            '<div class="ach-av" style="background:' + deptColor(a.dept || '') + '">' +
-              initials2(a.name) +
-            '</div>' +
-            '<div class="ach-info">' +
-              '<span class="ach-name">' + (a.name || '—') + '</span>' +
-              '<span class="ach-sub">' + (a.code || a.emp_id || '') +
-                (a.title ? ' · ' + a.title : '') + '</span>' +
-            '</div>' +
-          '</div>'
+          '<div class="ach-av">' + initials2(a.name) + '</div>' +
+          '<div class="ach-info">' +
+            '<span class="ach-name">' + a.name + '</span>' +
+            '<span class="ach-sub">' + a.code + '</span>' +
+          '</div></div>'
         );
       });
-    } else if (t.assigned_str && t.assigned_str.trim()) {
-      // Fallback: backend only sent a plain string
-      $cur.append(
-        '<div class="ach-chip">' +
-          '<div class="ach-av">' + initials2(t.assigned_str) + '</div>' +
-          '<div class="ach-info"><span class="ach-name">' + t.assigned_str + '</span></div>' +
-        '</div>'
-      );
     } else {
       $cur.html('<span class="ach-placeholder">No assignees yet…</span>');
     }
     $('#atModalCurrentWrap').removeClass('hidden');
 
-    // ── Add-assignees section (hide for closed tickets) ──
     if (t.status !== 'closed') {
       $('#atModalAddWrap').removeClass('hidden');
       $('#atModalConfirmBtn').removeClass('hidden');
     }
     $('#atModalEmptyNotice').hide();
 
-  }).fail(function () {
+  }).fail(function() {
     showToast('Could not load ticket. Check the ID and try again.');
     $('#atModalEmptyNotice').show();
   });
 }
 
-// ── Render "new assignees" chips ──────────────────────────────
 function _atModalRenderNewChips() {
   const $row = $('#atModalNewChips').empty();
   if (!atModalNewAssignees.length) {
@@ -4122,7 +5097,7 @@ function _atModalRenderNewChips() {
     $('#atModalChainsContainer').addClass('hidden');
     return;
   }
-  atModalNewAssignees.forEach(function (emp, i) {
+  atModalNewAssignees.forEach(function(emp, i) {
     const $chip = $('<div class="ach-chip">').html(
       '<div class="ach-av" style="background:' + deptColor(emp.dept) + '">' +
         initials2(emp.full_name) +
@@ -4131,12 +5106,12 @@ function _atModalRenderNewChips() {
         '<span class="ach-name">' + emp.full_name + '</span>' +
         '<span class="ach-sub">' + emp.emp_id + ' · ' + (emp.title || '') + '</span>' +
       '</div>' +
-      '<button class="ach-remove" type="button" data-idx="' + i + '" title="Remove">' +
+      '<button class="ach-remove" type="button" data-idx="' + i + '">' +
         '<i class="fas fa-times"></i>' +
       '</button>'
     );
-    $chip.find('.ach-remove').on('click', function () {
-      atModalNewAssignees.splice($(this).data('idx'), 1);
+    $chip.find('.ach-remove').on('click', function() {
+      atModalNewAssignees.splice(parseInt($(this).data('idx')), 1);
       _atModalRenderNewChips();
     });
     $row.append($chip);
@@ -4144,22 +5119,22 @@ function _atModalRenderNewChips() {
   refreshAllChains(atModalNewAssignees, $('#atModalChainsContainer'), $('#atModalChains'));
 }
 
-// ── Ticket search input ───────────────────────────────────────
-$('#atModalSearchInput').on('input', function () {
+// Ticket search input inside modal
+$('#atModalSearchInput').on('input', function() {
   clearTimeout(atModalSearchTimer);
-  const q     = $(this).val().trim();
+  const q = $(this).val().trim();
   const $sugg = $('#atModalSuggestions');
   if (!q) { $sugg.addClass('hidden').empty(); return; }
 
-  atModalSearchTimer = setTimeout(function () {
-    API.ticketSearch(q).done(function (res) {
+  atModalSearchTimer = setTimeout(function() {
+    API.ticketSearch(q).done(function(res) {
       $sugg.empty().removeClass('hidden');
       const hits = res.results || [];
       if (!hits.length) {
         $sugg.html('<div class="fsg-no-result">No tickets found</div>');
         return;
       }
-      hits.forEach(function (t) {
+      hits.forEach(function(t) {
         const $item = $('<div class="atl-sugg-item">').html(
           '<span class="atl-sugg-id">' + t.id + '</span>' +
           '<div class="atl-sugg-info">' +
@@ -4172,7 +5147,7 @@ $('#atModalSearchInput').on('input', function () {
             '</span>' +
           '</div>'
         );
-        $item.on('click', function () {
+        $item.on('click', function() {
           $sugg.addClass('hidden');
           $('#atModalSearchInput').val(t.id);
           _atModalLoadTicket(t.id);
@@ -4183,58 +5158,51 @@ $('#atModalSearchInput').on('input', function () {
   }, 280);
 });
 
-$('#atModalSearchInput').on('keydown', function (e) {
+$('#atModalSearchInput').on('keydown', function(e) {
   if (e.key === 'Enter') {
     const q = $(this).val().trim();
-    if (q) { $('#atModalSuggestions').addClass('hidden'); _atModalLoadTicket(q); }
+    if (q) {
+      $('#atModalSuggestions').addClass('hidden');
+      _atModalLoadTicket(q);
+    }
   }
 });
 
-// ── Employee search inside modal ──────────────────────────────
-$('#atModalEmpSearch').on('input', function () {
+// Employee search inside modal
+$('#atModalEmpSearch').on('input', function() {
   clearTimeout(atModalEmpTimer);
-  const q     = $(this).val().trim();
+  const q = $(this).val().trim();
   const $sugg = $('#atModalEmpSuggestions');
   if (!q) { $sugg.addClass('hidden').empty(); return; }
 
-  atModalEmpTimer = setTimeout(function () {
-    API.employeeSearch(q).done(function (res) {
+  atModalEmpTimer = setTimeout(function() {
+    API.employeeSearch(q).done(function(res) {
       $sugg.empty().removeClass('hidden');
       if (!res.results || !res.results.length) {
         $sugg.html('<div class="fsg-no-result">No employee found</div>');
         return;
       }
-      res.results.forEach(function (emp) {
-        const already = atModalNewAssignees.some(a => a.id === emp.id);
-        const $item   = $(
-          '<div class="emp-sugg-item' + (already ? ' already-added' : '') + '">'
-        ).html(
+      res.results.forEach(function(emp) {
+        const already = atModalNewAssignees.some(function(a) { return a.id === emp.id; });
+        const $item = $('<div class="emp-sugg-item' + (already ? ' already-added' : '') + '">').html(
           '<div class="emp-av" style="background:' + deptColor(emp.dept) + '">' +
-            emp.full_name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() +
+            initials2(emp.full_name) +
           '</div>' +
           '<div class="emp-info">' +
             '<p>' + emp.full_name + '</p>' +
             '<small>' +
-              '<span class="emp-badge">'  + (emp.title || '')  + '</span>' +
+              '<span class="emp-badge">' + (emp.title || '') + '</span>' +
               '<span class="emp-badge dept">' + emp.dept + '</span>' +
-              (emp.location
-                ? '<span class="emp-badge loc"><i class="fas fa-map-marker-alt" style="font-size:.58rem"></i> ' + emp.location + '</span>'
-                : '') +
               (emp.manager_name
                 ? '<span class="emp-badge" style="background:rgba(47,107,63,.08);color:var(--gd)">' +
                   '<i class="fas fa-sitemap" style="font-size:.58rem"></i> ' + emp.manager_name + '</span>'
                 : '') +
             '</small>' +
           '</div>' +
-          '<div class="emp-meta">' +
-            '<span class="emp-id">' + emp.emp_id + '</span>' +
-            (emp.work_phone || emp.home_phone
-              ? '<span class="emp-phone">' + (emp.work_phone || emp.home_phone) + '</span>'
-              : '') +
-          '</div>'
+          '<div class="emp-meta"><span class="emp-id">' + emp.emp_id + '</span></div>'
         );
         if (!already) {
-          $item.on('click', function () {
+          $item.on('click', function() {
             atModalNewAssignees.push(emp);
             $('#atModalEmpSearch').val('');
             $sugg.addClass('hidden');
@@ -4247,54 +5215,47 @@ $('#atModalEmpSearch').on('input', function () {
   }, 250);
 });
 
-// ── Confirm assignment ────────────────────────────────────────
-$('#atModalConfirmBtn').on('click', function () {
+// Confirm assignment
+$('#atModalConfirmBtn').on('click', function() {
   if (!atModalTicketId) return;
   if (!atModalNewAssignees.length) {
     showToast('Please add at least one employee to assign.');
     return;
   }
-  const ids   = atModalNewAssignees.map(e => e.id);
-  const names = atModalNewAssignees.map(e => e.full_name).join(', ');
-  const $btn  = $(this).prop('disabled', true)
-                       .html('<i class="fas fa-spinner fa-spin"></i> Assigning…');
+  const ids   = atModalNewAssignees.map(function(e) { return e.id; });
+  const names = atModalNewAssignees.map(function(e) { return e.full_name; }).join(', ');
+  const $btn  = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning…');
 
-  showProgressModal('assignment', function () {
+  showProgressModal('assignment', function() {
     return API.ticketReassign(atModalTicketId, { assignee_ids: ids });
-  }).then(function () {
+  }).then(function() {
     $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Confirm Assignment');
     $('#assignTicketModal').addClass('hidden');
     renderTicketsTable();
     refreshSidebarCounts();
     showToast('Ticket <strong>' + atModalTicketId + '</strong> assigned to <strong>' + names + '</strong>');
-  }).catch(function () {
+  }).catch(function() {
     $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Confirm Assignment');
   });
 });
 
-// ── Close handlers ────────────────────────────────────────────
-$('#closeAssignTicketModal, #closeAssignTicketModal2').on('click', function () {
+// Close handlers
+$('#closeAssignTicketModal, #closeAssignTicketModal2').on('click', function() {
   $('#assignTicketModal').addClass('hidden');
 });
-$('#assignTicketModal').on('click', function (e) {
+$('#assignTicketModal').on('click', function(e) {
   if ($(e.target).is('#assignTicketModal')) $(this).addClass('hidden');
 });
 
-// ── Close suggestion dropdowns on outside click ───────────────
-// (extend the existing $(document).on('click') or add separately)
-$(document).on('click.atModal', function (e) {
-  if (!$(e.target).closest('#atModalSearchInput, #atModalSuggestions').length) {
+// Close suggestions on outside click
+$(document).on('click', function(e) {
+  if (!$(e.target).closest('#assignTicketModal .assign-search-wrap').length &&
+      !$(e.target).closest('#assignTicketModal').length) {
     $('#atModalSuggestions').addClass('hidden');
-  }
-  if (!$(e.target).closest('#atModalEmpSearch, #atModalEmpSuggestions').length) {
     $('#atModalEmpSuggestions').addClass('hidden');
   }
 });
 
-// ── Initialize on page load ───────────────────────────────────
-renderTicketsTable();
-refreshSidebarCounts();
-
-});
+}); 
 </script>
 {% endblock %}

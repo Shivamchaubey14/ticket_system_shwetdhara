@@ -59,7 +59,126 @@ class EscalationMailer:
             excel_bytes=excel_bytes,
             filename=f"Escalated_{ticket.ticket_id}_Manager_Report.xlsx",
         )
+    # ── Tier-1 Bulk (grouped) ────────────────────────────────────────────
+    def send_tier1_bulk(self, *, tickets: list, recipient_email: str) -> None:
+        """
+        Send ONE Tier-1 email to a manager covering multiple escalated tickets.
+        Builds a single Excel with all tickets included.
+        """
+        from escalation_engine import build_escalation_excel
 
+        count   = len(tickets)
+        subject = (
+            f"[{SYSTEM_NAME}] ⚠️ {count} Escalated Ticket{'s' if count > 1 else ''} "
+            f"Awaiting Your Action"
+        )
+
+        # Build combined Excel
+        meta_list   = [{"auto_escalated": False, "overdue_hrs": 0.0}] * count
+        excel_bytes = build_escalation_excel(tickets, tier=1, ticket_meta_list=meta_list)
+        now_str     = timezone.now().strftime('%Y%m%d_%H%M')
+        filename    = f"Escalated_{count}_tickets_Manager_Report_{now_str}.xlsx"
+
+        # Build HTML listing all tickets
+        html_body = self._build_tier1_bulk_html(tickets)
+
+        self._dispatch(
+            subject=subject,
+            html_body=html_body,
+            recipient=recipient_email,
+            ticket=tickets[0],          # used only for logging ticket_id
+            excel_bytes=excel_bytes,
+            filename=filename,
+        )
+
+    def _build_tier1_bulk_html(self, tickets) -> str:
+        rows = ""
+        for ticket in tickets:
+            hours_open = self._hours_since(ticket.escalated_at or ticket.updated_at)
+            ticket_url = f"{BASE_URL}/my_tickets/?ticket={ticket.ticket_id}"
+            rows += f"""
+            <tr>
+              <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;">
+                <a href="{ticket_url}" style="color:#E65100;font-weight:700;text-decoration:none;">
+                  {ticket.ticket_id}
+                </a>
+              </td>
+              <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;">
+                {ticket.caller_display_name}
+              </td>
+              <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;">
+                {ticket.get_ticket_type_display()}
+              </td>
+              <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:center;">
+                <span style="background:#FFEBEE;color:#B71C1C;padding:3px 10px;
+                             border-radius:12px;font-size:11px;font-weight:700;">
+                  {ticket.get_priority_display().upper()}
+                </span>
+              </td>
+              <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:12px;
+                         color:#B71C1C;font-weight:600;">
+                {hours_open:.0f} hrs open
+              </td>
+            </tr>"""
+
+        return f"""<!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>Escalation Alert</title></head>
+    <body style="margin:0;padding:0;background:#F0F2F5;font-family:'Segoe UI',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F2F5;padding:32px 16px;">
+    <tr><td align="center">
+    <table width="660" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;
+        overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+    <tr>
+        <td style="background:#E65100;padding:28px 32px;">
+        <div style="color:#fff;font-size:22px;font-weight:700;">
+            ⚠️ {len(tickets)} Escalated Ticket{'s' if len(tickets) > 1 else ''} — Action Required
+        </div>
+        <p style="margin:6px 0 0;color:rgba(255,255,255,0.80);font-size:13px;">
+            {SYSTEM_NAME} · Ticket Management System
+        </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:28px 32px;">
+        <p style="font-size:14px;color:#424242;margin:0 0 20px;">
+            The following tickets have been escalated and require your immediate attention.
+            Full details are in the attached Excel report.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0"
+                style="border:1px solid #E0E0E0;border-radius:6px;overflow:hidden;">
+            <thead>
+            <tr style="background:#37474F;">
+                <th style="padding:10px 14px;color:#fff;font-size:12px;text-align:left;">Ticket ID</th>
+                <th style="padding:10px 14px;color:#fff;font-size:12px;text-align:left;">Caller</th>
+                <th style="padding:10px 14px;color:#fff;font-size:12px;text-align:left;">Type</th>
+                <th style="padding:10px 14px;color:#fff;font-size:12px;text-align:center;">Priority</th>
+                <th style="padding:10px 14px;color:#fff;font-size:12px;text-align:left;">Open For</th>
+            </tr>
+            </thead>
+            <tbody>{rows}</tbody>
+        </table>
+        <div style="text-align:center;margin:28px 0 8px;">
+            <a href="{BASE_URL}/my_tickets/"
+            style="display:inline-block;background:#E65100;color:#fff;text-decoration:none;
+                    padding:13px 34px;border-radius:6px;font-size:14px;font-weight:700;">
+            Open KSTS Dashboard →
+            </a>
+        </div>
+        </td>
+    </tr>
+    <tr>
+        <td style="background:#37474F;padding:16px 32px;text-align:center;">
+        <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.55);">
+            Automated notification from <strong style="color:rgba(255,255,255,0.80);">
+            {SYSTEM_NAME}</strong>. Do not reply to this email.
+        </p>
+        </td>
+    </tr>
+    </table>
+    </td></tr>
+    </table>
+    </body></html>"""
     # ── Tier-2 ──────────────────────────────────────────────────────────────
     def send_tier2(self, *, ticket, recipient_email: str) -> None:
         subject = (
@@ -113,7 +232,6 @@ class EscalationMailer:
     def _build_tier2_html(self, ticket) -> str:
         from_settings = getattr(settings, "ESCALATION_CE_NAME", "Chief Executive")
         hours_open = self._hours_since(ticket.escalated_at or ticket.updated_at)
-
         manager_name = "—"
         if ticket.escalated_to and ticket.escalated_to.manager:
             manager_name = ticket.escalated_to.manager.get_full_name()

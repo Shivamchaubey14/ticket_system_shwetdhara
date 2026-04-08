@@ -50,4 +50,7 @@ urlpatterns = [
     path('api/transporter/<int:trans_pk>/tickets/', api_views.transporter_tickets, name="transporter_tickets"),
     path("api/escalation/trigger/", escalation_api_views.escalation_trigger, name="escalation_trigger"),
     path("api/escalation/status/",  escalation_api_views.escalation_status,  name="escalation_status"),
+    
+#   --- Org Hierarchy API----------------------------------------------------------
+    path('api/org/hierarchy/', api_views.org_hierarchy_api, name='org_hierarchy_api'),
 ]

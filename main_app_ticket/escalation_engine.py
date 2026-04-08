@@ -30,7 +30,7 @@ TWO TRIGGERS for escalation emails:
 import io
 import logging
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import timedelta
 
 from django.conf import settings
@@ -700,6 +700,72 @@ def _build_tier2_html(tickets_with_meta, ce_name=""):
   </div>
 </div></body></html>"""
 
+def dispatch_tier1_grouped(*, tickets_with_meta, manager_email):
+    """
+    Send a single Tier-1 email to one manager covering ALL their escalated tickets.
+    tickets_with_meta: list of (ticket_orm, overdue_hrs float)
+    """
+    from .models import EscalationNotification, CustomUser
+
+    ticket_list = [t for t, _ in tickets_with_meta]
+    meta_list   = [
+        {"auto_escalated": True, "overdue_hrs": overdue_h}
+        for _, overdue_h in tickets_with_meta
+    ]
+
+    # Guard: skip any tickets already notified at tier-1
+    to_send = []
+    for ticket, meta in zip(ticket_list, meta_list):
+        notif, _ = EscalationNotification.objects.get_or_create(ticket=ticket)
+        if not notif.tier1_sent:
+            to_send.append((ticket, meta, notif))
+
+    if not to_send:
+        logger.info("dispatch_tier1_grouped: all tickets already notified for %s", manager_email)
+        return
+
+    ticket_objs = [t for t, _, _ in to_send]
+    metas       = [m for _, m, _ in to_send]
+
+    # Build ONE Excel containing all tickets for this manager
+    excel_bytes = build_escalation_excel(ticket_objs, tier=1, ticket_meta_list=metas)
+    now_str     = timezone.now().strftime('%Y%m%d_%H%M')
+    filename    = f"Escalation_T1_{now_str}_({len(ticket_objs)}_tickets).xlsx"
+
+    # Resolve manager name for greeting
+    mgr_user     = CustomUser.objects.filter(email__iexact=manager_email).first()
+    manager_name = mgr_user.get_full_name() if mgr_user else manager_email
+
+    html = _build_tier1_html(
+        [(t, m) for t, m in zip(ticket_objs, metas)],
+        manager_name=manager_name,
+    )
+    subject = (
+        f"⚠ [KSTS] {len(ticket_objs)} Escalated Ticket{'s' if len(ticket_objs) > 1 else ''} "
+        f"Require Your Action"
+    )
+
+    msg = EmailMessage(
+        subject=subject,
+        body=html,
+        from_email=f"{SENDER_NAME} <{settings.DEFAULT_FROM_EMAIL}>",
+        to=[manager_email],
+    )
+    msg.content_subtype = "html"
+    msg.attach(filename, excel_bytes,
+               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    msg.send(fail_silently=False)
+
+    # Mark all tickets as tier-1 notified
+    sent_at       = timezone.now()
+    ticket_ids_str = ", ".join(t.ticket_id for t, _, _ in to_send)
+    for _, _, notif in to_send:
+        notif.tier1_sent_at   = sent_at
+        notif.tier1_recipient = manager_email
+        notif.save(update_fields=["tier1_sent_at", "tier1_recipient", "updated_at"])
+
+    logger.info("Tier-1 grouped: %d tickets → %s [%s]",
+                len(to_send), manager_email, ticket_ids_str)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  DISPATCH: TIER-1
@@ -1059,8 +1125,9 @@ def dispatch_tier2_for_ticket(ticket_id, force=False,
 def run_overdue_auto_escalate_sweep():
     """
     Finds all non-escalated tickets past their expected_resolution_date,
-    marks them escalated, logs an activity, fires Tier-1 immediately,
-    and schedules Tier-2 for TIER2_DELAY_HOURS later.
+    marks them escalated, groups them by manager, fires ONE Tier-1 email
+    per manager with ALL their tickets in a single Excel, then schedules
+    Tier-2 per ticket for TIER2_DELAY_HOURS later.
     """
     from .models import Ticket, TicketActivity, EscalationNotification
     from .tasks import send_tier2_escalation
@@ -1079,7 +1146,8 @@ def run_overdue_auto_escalate_sweep():
         .prefetch_related("assigned_to__manager", "attachments")
     )
 
-    count = 0
+    # ── Step 1: mark all overdue tickets as escalated ─────────────────────
+    tickets_with_meta = []  # [(ticket, overdue_hrs), ...]
     for ticket in candidates:
         overdue_h = _calc_overdue_hrs(ticket, now)
         if overdue_h <= 0:
@@ -1088,10 +1156,10 @@ def run_overdue_auto_escalate_sweep():
         logger.info("Auto-escalating %s (%.1f hrs overdue, priority=%s)",
                     ticket.ticket_id, overdue_h, ticket.priority)
 
-        old_status             = ticket.status
-        ticket.is_escalated    = True
-        ticket.status          = Ticket.Status.ESCALATED
-        ticket.escalated_at    = now
+        old_status               = ticket.status
+        ticket.is_escalated      = True
+        ticket.status            = Ticket.Status.ESCALATED
+        ticket.escalated_at      = now
         ticket.escalation_reason = f"Auto-escalated: overdue by {overdue_h:.1f} hrs"
         ticket.save(update_fields=[
             "is_escalated", "status", "escalated_at",
@@ -1106,18 +1174,60 @@ def run_overdue_auto_escalate_sweep():
             new_status    = Ticket.Status.ESCALATED,
             description   = f"Auto-escalated by KSTS system: overdue by {overdue_h:.1f} hrs.",
         )
-
         EscalationNotification.objects.get_or_create(ticket=ticket)
+        tickets_with_meta.append((ticket, overdue_h))
 
+    if not tickets_with_meta:
+        logger.info("Overdue sweep done — 0 tickets to escalate")
+        return 0
+
+    # ── Step 2: group tickets by manager email ────────────────────────────
+    manager_buckets = defaultdict(list)  # manager_email -> [(ticket, overdue_h), ...]
+    no_manager      = []
+
+    for ticket, overdue_h in tickets_with_meta:
+        manager_email = None
+
+        # Primary: manager of each assignee
+        for assignee in ticket.assigned_to.all():
+            if assignee.manager and assignee.manager.email:
+                manager_email = assignee.manager.email
+                break
+
+        # Fallback: manager of escalated_to
+        if not manager_email and ticket.escalated_to and ticket.escalated_to.manager:
+            manager_email = ticket.escalated_to.manager.email
+
+        if manager_email:
+            manager_buckets[manager_email].append((ticket, overdue_h))
+        else:
+            no_manager.append((ticket, overdue_h))
+            logger.warning("No manager found for %s — will go to CE as Tier-2", ticket.ticket_id)
+
+    # ── Step 3: send ONE grouped email per manager ────────────────────────
+    for manager_email, bucket in manager_buckets.items():
         try:
-            dispatch_tier1_for_ticket(
+            dispatch_tier1_grouped(
+                tickets_with_meta=bucket,
+                manager_email=manager_email,
+            )
+        except Exception as exc:
+            logger.error("Tier-1 grouped failed for manager %s: %s", manager_email, exc)
+
+    # ── Step 4: tickets with no manager go straight to CE as Tier-2 ───────
+    for ticket, overdue_h in no_manager:
+        try:
+            dispatch_tier2_for_ticket(
                 ticket.ticket_id,
+                force=True,
                 is_auto_escalated=True,
                 overdue_hrs=overdue_h,
             )
         except Exception as exc:
-            logger.error("T1 failed in auto-escalate sweep for %s: %s", ticket.ticket_id, exc)
+            logger.error("Tier-2 fallback failed for %s: %s", ticket.ticket_id, exc)
 
+    # ── Step 5: schedule Tier-2 for every ticket (delayed) ────────────────
+    for ticket, overdue_h in tickets_with_meta:
         try:
             send_tier2_escalation.apply_async(
                 kwargs={
@@ -1128,12 +1238,13 @@ def run_overdue_auto_escalate_sweep():
                 countdown=TIER2_DELAY_HOURS * 3600,
             )
         except Exception as exc:
-            logger.error("Could not schedule T2 for %s: %s", ticket.ticket_id, exc)
+            logger.error("Could not schedule Tier-2 for %s: %s", ticket.ticket_id, exc)
 
-        count += 1
-
-    logger.info("Overdue sweep done — %d tickets auto-escalated", count)
-    return count
+    logger.info(
+        "Overdue sweep done — %d tickets across %d manager buckets (%d no-manager → CE)",
+        len(tickets_with_meta), len(manager_buckets), len(no_manager),
+    )
+    return len(tickets_with_meta)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

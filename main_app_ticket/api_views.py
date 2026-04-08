@@ -1912,3 +1912,43 @@ def my_tickets_export(request):
     )
     resp["Content-Disposition"] = f'attachment; filename="{fname}"'
     return resp
+
+@login_required
+def org_hierarchy_api(request):
+    employees = CustomUser.objects.select_related('manager').filter(
+        account_status=CustomUser.AccountStatus.ACTIVE,
+        is_superuser=False,
+        is_staff=False,
+    ).values(
+        'id','first_name','last_name','email','employee_code',
+        'employee_type','employee_title','department',
+        'work_address','mobile_number','login_status','manager_id',
+    )
+    data = []
+    departments = set()
+    locations = set()
+    for e in employees:
+        dept = (e['department'] or '').strip()
+        loc  = (e['work_address'] or '').strip()
+        if dept:
+            departments.add(dept)
+        if loc:
+            locations.add(loc)
+        data.append({
+            'id': e['id'],
+            'full_name': f"{e['first_name']} {e['last_name']}".strip(),
+            'email': e['email'],
+            'employee_code': e['employee_code'],
+            'employee_type': e['employee_type'],
+            'employee_title': e['employee_title'],
+            'department': dept,
+            'work_address': loc,
+            'mobile_number': e['mobile_number'],
+            'login_status': e['login_status'],
+            'manager_id': e['manager_id'],
+        })
+    return JsonResponse({
+        'employees': data,
+        'departments': sorted(departments),
+        'locations': sorted(locations),
+    })

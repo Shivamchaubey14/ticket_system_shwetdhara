@@ -75,6 +75,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
+from django.utils import timezone
 
 from django.contrib.auth.hashers import make_password
 from django.db import connection, transaction
@@ -98,12 +99,10 @@ _EMP_REQUIRED = ["employee_code", "first_name"]
 # Django's AbstractUser has date_joined (auto_now_add) and last_login (nullable).
 # We exclude 'id' and any auto-managed timestamp columns.
 # NOTE: adjust this set if your CustomUser model has different auto fields.
-_SKIP_INSERT_COLUMNS = frozenset({"id", "date_joined", "last_login"})
-
+_SKIP_INSERT_COLUMNS = frozenset({"id", "last_login"})  # removed "date_joined"
 # Fields never updated on DUPLICATE KEY conflict
 _SKIP_UPDATE_COLUMNS = frozenset({
-    "id", "employee_code", "email", "password",
-    "date_joined", "last_login",
+    "id", "employee_code", "email", "password", "last_login",
 })
 
 # ── Column alias map ──────────────────────────────────────────────────────────
@@ -816,13 +815,14 @@ def _real_import(
             "first_name":     first,
             "last_name":      last,
             "email":          email,
-            "password":       make_password(None),   # unusable — reset required
+            "password":       make_password(None),   
             "department":     department,
             "employee_type":  employee_type,
             "work_phone":     phone_raw or None,
             "account_status": account_status,
             "login_status":   login_status,
             "is_active":      account_status == "Active",
+            "date_joined":    timezone.now(),
         }
         if employee_title:
             kwargs["employee_title"] = employee_title
